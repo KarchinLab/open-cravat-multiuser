@@ -1,0 +1,3 @@
+dist/*
+open_cravat_server_addon.egg-info/*
+cravatserveraddon/__pycache__/*
