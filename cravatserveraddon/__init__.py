@@ -1,3 +1,4 @@
+from aiohttp import web
 from cryptography import fernet
 import aiohttp_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
@@ -34,6 +35,8 @@ class ServerAdminDb ():
 
     async def check_sessionkey (self, username, sessionkey):
         q = 'select * from users where email="{}" and sessionkey="{}"'.format(username, sessionkey)
+        #print('@@', q)
+        #print('@@', self.cursor)
         await self.cursor.execute(q)
         r = await self.cursor.fetchone()
         if r is not None:
@@ -129,23 +132,15 @@ async def new_session (request):
     return session
 
 async def is_admin_loggedin (request):
-    session = await aiohttp_session.get_session(request)
+    session = await get_session(request)
     r = await is_loggedin(request)
     if session['username'] == 'admin' and r:
         return True
     else:
         return False
 
-async def is_loggedin (request):
-    session = await aiohttp_session.get_session(request)
-    if 'username' not in session or 'sessionkey' not in session:
-        response = False
-    else:
-        response = await admindb.check_sessionkey(session['username'], session['sessionkey'])
-    return response
-
 async def get_username (request):
-    session = await aiohttp_session.get_session(request)
+    session = await get_session(request)
     return session['username']
 
 async def add_job_info (request, job, job_options):
@@ -160,67 +155,89 @@ def create_user_dir_if_not_exist (username):
         os.mkdir(user_job_dir)
 
 async def signup (request):
-    queries = request.rel_url.query
-    username = queries['username']
-    password = queries['password']
-    m = hashlib.sha256()
-    m.update(password.encode('utf-16be'))
-    passwordhash = m.hexdigest()
-    question = queries['question']
-    answer = queries['answer']
-    m = hashlib.sha256()
-    m.update(answer.encode('utf-16be'))
-    answerhash = m.hexdigest()
-    r = await admindb.check_username_presence(username)
-    if r == True:
-        response = 'already registered'
-    else:
-        await admindb.add_user(username, passwordhash, question, answerhash)
-        session = await get_session(request)
-        session['username'] = username
-        session['logged'] = True
-        create_user_dir_if_not_exist(username)
-        sessionkey = get_session_key()
-        session['sessionkey'] = sessionkey
-        await admindb.store_sessionkey(username, sessionkey)
-        response = 'success'
-    return response
-
-async def login (request):
-    queries = request.rel_url.query
-    username = queries['username']
-    password = queries['password']
-    m = hashlib.sha256()
-    m.update(password.encode('utf-16be'))
-    passwordhash = m.hexdigest()
-    r = await admindb.check_password(username, passwordhash)
-    if r == True:
-        session = await new_session(request)
-        session['username'] = username
-        session['logged'] = True
-        sessionkey = get_session_key()
-        session['sessionkey'] = sessionkey
-        await admindb.set_sessionkey(username, sessionkey)
-        response = 'success'
+    if servermode:
+        queries = request.rel_url.query
+        username = queries['username']
+        password = queries['password']
+        m = hashlib.sha256()
+        m.update(password.encode('utf-16be'))
+        passwordhash = m.hexdigest()
+        question = queries['question']
+        answer = queries['answer']
+        m = hashlib.sha256()
+        m.update(answer.encode('utf-16be'))
+        answerhash = m.hexdigest()
+        r = await admindb.check_username_presence(username)
+        if r == True:
+            response = 'already registered'
+        else:
+            await admindb.add_user(username, passwordhash, question, answerhash)
+            session = await get_session(request)
+            session['username'] = username
+            session['logged'] = True
+            create_user_dir_if_not_exist(username)
+            sessionkey = get_session_key()
+            session['sessionkey'] = sessionkey
+            await admindb.store_sessionkey(username, sessionkey)
+            response = 'success'
     else:
         response = 'fail'
-    return response
+    return web.json_response(response)
+
+async def login (request):
+    global servermode
+    if servermode:
+        queries = request.rel_url.query
+        username = queries['username']
+        password = queries['password']
+        m = hashlib.sha256()
+        m.update(password.encode('utf-16be'))
+        passwordhash = m.hexdigest()
+        r = await admindb.check_password(username, passwordhash)
+        if r == True:
+            session = await new_session(request)
+            session['username'] = username
+            session['logged'] = True
+            sessionkey = get_session_key()
+            session['sessionkey'] = sessionkey
+            await admindb.set_sessionkey(username, sessionkey)
+            response = 'success'
+        else:
+            response = 'fail'
+    else:
+        response = 'fail'
+    return web.json_response(response)
 
 async def get_password_question (request):
-    queries = request.rel_url.query
-    email = queries['email']
-    question = await admindb.get_password_question(email)
-    return question
+    if servermode:
+        queries = request.rel_url.query
+        email = queries['email']
+        question = await admindb.get_password_question(email)
+        if question is None:
+            response = {'status':'fail', 'msg':'No such email'}
+        else:
+            response = {'status':'success', 'msg': question}
+    else:
+        response = {'status':'fail', 'msg':'no server mode'}
+    return web.json_response(response)
 
 async def check_password_answer (request):
-    queries = request.rel_url.query
-    email = queries['email']
-    answer = queries['answer']
-    m = hashlib.sha256()
-    m.update(answer.encode('utf-16be'))
-    answerhash = m.hexdigest()
-    r = await admindb.check_password_answer(email, answerhash)
-    return r
+    if servermode:
+        queries = request.rel_url.query
+        email = queries['email']
+        answer = queries['answer']
+        m = hashlib.sha256()
+        m.update(answer.encode('utf-16be'))
+        answerhash = m.hexdigest()
+        correct = await admindb.check_password_answer(email, answerhash)
+        if correct:
+            temppassword = await set_temp_password(request)
+            response = {'success': True, 'msg': temppassword}
+        else:
+            response = {'success': False, 'msg': 'Wrong answer'}
+    else:
+        response = {'success': False, 'msg': 'no server mode'}
+    return web.json_response(response)
 
 async def set_temp_password (request):
     queries = request.rel_url.query
@@ -229,44 +246,77 @@ async def set_temp_password (request):
     return temppassword
 
 async def change_password (request):
-    session = await get_session(request)
-    if 'username' not in session:
-        response = 'Not logged in'
-        return response
-    email = session['username']
-    queries = request.rel_url.query
-    oldpassword = queries['oldpassword']
-    newpassword = queries['newpassword']
-    m = hashlib.sha256()
-    m.update(oldpassword.encode('utf-16be'))
-    oldpasswordhash = m.hexdigest()
-    r = await admindb.check_password(email, oldpasswordhash)
-    if r == False:
-        response = 'User authentication failed.'
-    else:
+    if servermode:
+        session = await get_session(request)
+        if 'username' not in session:
+            response = 'Not logged in'
+            return response
+        email = session['username']
+        queries = request.rel_url.query
+        oldpassword = queries['oldpassword']
+        newpassword = queries['newpassword']
         m = hashlib.sha256()
-        m.update(newpassword.encode('utf-16be'))
-        newpasswordhash = m.hexdigest()
-        await admindb.set_password(email, newpasswordhash)
-        response = 'success'
+        m.update(oldpassword.encode('utf-16be'))
+        oldpasswordhash = m.hexdigest()
+        r = await admindb.check_password(email, oldpasswordhash)
+        if r == False:
+            response = 'User authentication failed.'
+        else:
+            m = hashlib.sha256()
+            m.update(newpassword.encode('utf-16be'))
+            newpasswordhash = m.hexdigest()
+            await admindb.set_password(email, newpasswordhash)
+            response = 'success'
+    else:
+        response = 'no server mode'
+    return web.json_response(response)
+
+async def is_loggedin (request):
+    session = await get_session(request)
+    if 'username' not in session or 'sessionkey' not in session:
+        response = False
+    else:
+        response = await admindb.check_sessionkey(session['username'], session['sessionkey'])
     return response
 
 async def check_logged (request):
-    session = await get_session(request)
-    if not 'username' in session:
-        response = {'logged': False, 'email': ''}
-    else:
-        username = session['username']
-        r = await is_loggedin(request)
-        if r == True:
-            response = {'logged': True, 'email': username}
+    if servermode:
+        if 'Cache-Control' in request.headers:
+            session = await new_session(request)
         else:
-            response = {'logged': False, 'email': ''}
-    return response
+            session = await get_session(request)
+        if not 'username' in session:
+            logged = False
+            email = ''
+        else:
+            username = session['username']
+            r = await is_loggedin(request)
+            if r == True:
+                logged = True
+                email = username
+            else:
+                logged = False
+                email = ''
+        response = {'logged': logged, 'email': email}
+    else:
+        response = 'no server mode'
+    return web.json_response(response)
 
 async def logout (request):
-    session = await new_session(request)
-    session['username'] = None
-    response = 'success'
-    return response
+    if servermode:
+        session = await new_session(request)
+        session['username'] = None
+        response = 'success'
+    else:
+        response = 'no server mode'
+    return web.json_response(response)
+
+def add_routes (routes):
+    routes.append(['GET', '/submit/login', login])
+    routes.append(['GET', '/submit/logout', logout])
+    routes.append(['GET', '/submit/signup', signup])
+    routes.append(['GET', '/submit/passwordquestion', get_password_question])
+    routes.append(['GET', '/submit/passwordanswer', check_password_answer])
+    routes.append(['GET', '/submit/changepassword', change_password])
+    routes.append(['GET', '/submit/checklogged', check_logged])
 
