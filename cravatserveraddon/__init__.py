@@ -281,6 +281,7 @@ async def is_loggedin (request):
 
 async def check_logged (request):
     if servermode:
+        print('@@', request.headers)
         if 'Cache-Control' in request.headers:
             session = await new_session(request)
         else:
@@ -311,12 +312,13 @@ async def logout (request):
         response = 'no server mode'
     return web.json_response(response)
 
-def add_routes (routes):
-    routes.append(['GET', '/submit/login', login])
-    routes.append(['GET', '/submit/logout', logout])
-    routes.append(['GET', '/submit/signup', signup])
-    routes.append(['GET', '/submit/passwordquestion', get_password_question])
-    routes.append(['GET', '/submit/passwordanswer', check_password_answer])
-    routes.append(['GET', '/submit/changepassword', change_password])
-    routes.append(['GET', '/submit/checklogged', check_logged])
+def add_routes (router):
+    router.add_route('GET', '/server/login', login)
+    router.add_route('GET', '/server/logout', logout)
+    router.add_route('GET', '/server/signup', signup)
+    router.add_route('GET', '/server/passwordquestion', get_password_question)
+    router.add_route('GET', '/server/passwordanswer', check_password_answer)
+    router.add_route('GET', '/server/changepassword', change_password)
+    router.add_route('GET', '/server/checklogged', check_logged)
+    router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 
