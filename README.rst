@@ -10,6 +10,6 @@ OpenCRAVAT is a python package that performs genomic variant interpretation incl
 .. _In Silico Solutions: http://insilico.us.com
 .. _ITCR: https://itcr.cancer.gov
 
-Please see: `OpenCRAVAT Docs`_ for installation instructions and software documentation.
+Please see: `OpenCRAVAT Docs`_ for installation instructions and software documentation for OpenCRAVAT.
 
 .. _OpenCRAVAT Docs: https://github.com/KarchinLab/open-cravat/wiki
