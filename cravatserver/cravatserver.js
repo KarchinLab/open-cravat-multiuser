@@ -241,6 +241,13 @@ function doAfterLogin (username) {
     populateJobs();
 }
 
+function setupAdminMode () {
+    document.getElementById('settingsdiv').style.display = 'none';
+    document.getElementById('threedotsdiv').style.display = 'block';
+    $('#storediv_tabhead[value=storediv]')[0].style.display = 'inline-block';
+    document.getElementById('submitcontentdiv').style.display = 'none';
+}
+
 function msgAccountDiv (msg) {
     document.getElementById('accountmsgdiv').textContent = msg;
     setTimeout(function () {
