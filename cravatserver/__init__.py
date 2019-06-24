@@ -35,8 +35,6 @@ class ServerAdminDb ():
 
     async def check_sessionkey (self, username, sessionkey):
         q = 'select * from users where email="{}" and sessionkey="{}"'.format(username, sessionkey)
-        #print('@@', q)
-        #print('@@', self.cursor)
         await self.cursor.execute(q)
         r = await self.cursor.fetchone()
         if r is not None:
@@ -281,7 +279,6 @@ async def is_loggedin (request):
 
 async def check_logged (request):
     if servermode:
-        print('@@', request.headers)
         if 'Cache-Control' in request.headers:
             session = await new_session(request)
         else:

@@ -1,3 +1,4 @@
 dist/*
-open_cravat_server_addon.egg-info/*
+*.egg-info/*
 cravatserveraddon/__pycache__/*
+*/*/*.pyc

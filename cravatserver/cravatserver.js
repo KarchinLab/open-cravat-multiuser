@@ -1,14 +1,22 @@
+function openSubmitPage (username) {
+    location.href = location.protocol + '//' + window.location.host + '/submit/index.html?username=' + username;
+}
+
+function openLoginPage () {
+    console.log('@@ calling login page');
+    location.href = location.protocol + '//' + window.location.host + '/server/login.html';
+}
+
 function login () {
     var usernameSubmit = document.getElementById('login_username').value;
     var passwordSubmit = document.getElementById('login_password').value;
     $.ajax({
-        url: '/submit/login',
+        url: '/server/login',
         data: {'username':usernameSubmit, 'password':passwordSubmit},
         success: function (response) {
             if (response == 'success') {
                 username = usernameSubmit;
-                logged = true;
-                doAfterLogin();
+                openSubmitPage(username);
             } else if (response == 'fail') {
                 msgAccountDiv('Login failed');
             }
@@ -18,14 +26,9 @@ function login () {
 
 function logout () {
     $.ajax({
-        url: '/submit/logout',
+        url: '/server/logout',
         success: function (response) {
-            if (response == 'success') {
-                username = '';
-                logged = false;
-                clearJobTable();
-                showUnloggedControl();
-            }
+            openLoginPage();
         }
     });
 }
@@ -33,7 +36,7 @@ function logout () {
 function getPasswordQuestion () {
     var email = document.getElementById('forgotpasswordemail').value;
     $.ajax({
-        url: '/submit/passwordquestion',
+        url: '/server/passwordquestion',
         data: {'email': email},
         success: function (response) {
             var status = response['status'];
@@ -64,7 +67,7 @@ function submitForgotPasswordAnswer () {
     var email = document.getElementById('forgotpasswordemail').value;
     var answer = document.getElementById('forgotpasswordanswer').value;
     $.ajax({
-        url: '/submit/passwordanswer',
+        url: '/server/passwordanswer',
         data: {'email': email, 'answer': answer},
         success: function (response) {
             var success = response['success'];
@@ -111,7 +114,7 @@ function submitNewPassword () {
         return;
     }
     $.ajax({
-        url: '/submit/changepassword',
+        url: '/server/changepassword',
         data: {'oldpassword': oldpassword,
                'newpassword': newpassword},
         success: function (response) {
@@ -161,12 +164,13 @@ function signupSubmit () {
         return;
     }
     $.ajax({
-        url: '/submit/signup',
+        url: '/server/signup',
         data: {'username': username, 'password': password, 'question': question, 'answer': answer},
         success: function (response) {
             if (response == 'already registered') {
                 msgAccountDiv('Already registered');
             } else if (response == 'success') {
+                /*
                 populateJobs();
                 msgAccountDiv('Account created');
                 document.getElementById('loginsignupbutton').style.display = 'none';
@@ -177,7 +181,7 @@ function signupSubmit () {
                 toggleloginsignupdiv();
                 document.getElementById('loginsignupbutton').style.display = 'none';
                 document.getElementById('signupdiv').style.display = 'none';
-                document.getElementById('headerdiv').style.display = 'block';
+                */
             } else if (response == 'fail') {
                 msgAccountDiv('Signup failed');
             }
@@ -187,19 +191,126 @@ function signupSubmit () {
 
 function checkLogged (username) {
     $.ajax({
-        url: '/submit/checklogged',
-        headers: {'Cache-Control': 'no-cache'},
+        url: '/server/checklogged',
         data: {'username': username},
         success: function (response) {
             logged = response['logged'];
             if (logged == true) {
                 username = response['email'];
                 logged = true;
-                doAfterLogin();
+                doAfterLogin(username);
             } else {
                 showUnloggedControl();
             }
         }
     });
+}
+
+function showLoggedControl (username) {
+    addAccountDiv(username);
+    /*
+    var userDiv = document.getElementById('userdiv');
+    userDiv.textContent = username;
+    userDiv.style.display = 'inline-block';
+    document.getElementById('logoutdiv').style.display = 'inline-block';
+    document.getElementById('headerdiv').style.display = 'block';
+    document.getElementById('submitdiv').style.display = 'block';
+    */
+}
+
+function showUnloggedControl () {
+    openLoginPage();
+    /*
+    var userDiv = document.getElementById('userdiv');
+    userDiv.textContent = '';
+    userDiv.style.display = 'none';
+    document.getElementById('logoutdiv').style.display = 'none';
+    document.getElementById('threedotsdiv').style.display = 'none';
+    $('#storediv_tabhead[value=storediv]')[0].style.display = 'none';
+    document.getElementById('submitdiv').style.display = 'block';
+    document.getElementById('storediv').style.display = 'none';
+    document.getElementById('loginsignupbutton').style.display = 'none';
+    */
+}
+
+function doAfterLogin (username) {
+    showLoggedControl(username);
+    if (username == 'admin') {
+        setupAdminMode();
+    }
+    populateJobs();
+}
+
+function msgAccountDiv (msg) {
+    document.getElementById('accountmsgdiv').textContent = msg;
+    setTimeout(function () {
+        document.getElementById('accountmsgdiv').textContent = '';
+    }, 3000);
+}
+
+function addAccountDiv (username) {
+    var div = getEl('div');
+    div.id = 'accountdiv';
+    var userDiv = getEl('span');
+    userDiv.id = 'userdiv';
+    userDiv.textContent = username;
+    addEl(div, userDiv);
+    var logoutDiv = getEl('div');
+    addEl(div, logoutDiv);
+    var btn = getEl('button');
+    btn.addEventListener('click', function (evt) {
+        changePassword();
+    });
+    btn.textContent = 'Change password';
+    addEl(logoutDiv, btn);
+    var btn = getEl('button');
+    btn.addEventListener('click', function (evt) {
+        logout();
+    });
+    btn.textContent = 'Logout';
+    addEl(logoutDiv, btn);
+    var sdiv = getEl('div');
+    sdiv.id = 'changepassworddiv';
+    var span = getEl('span');
+    span.textContent = 'Old password: ';
+    addEl(sdiv, span);
+    var input = getEl('input');
+    input.type = 'password';
+    input.id = 'changepasswordoldpassword';
+    addEl(sdiv, input);
+    addEl(sdiv, getEl('br'));
+    var span = getEl('span');
+    span.textContent = 'New password: ';
+    addEl(sdiv, span);
+    var input = getEl('input');
+    input.type = 'password';
+    input.id = 'changepasswordnewpassword';
+    addEl(sdiv, input);
+    addEl(sdiv, getEl('br'));
+    var span = getEl('span');
+    span.textContent = 'Retype new password: ';
+    addEl(sdiv, span);
+    var input = getEl('input');
+    input.type = 'password';
+    input.id = 'changepasswordretypenewpassword';
+    addEl(sdiv, input);
+    addEl(sdiv, getEl('br'));
+    var btn = getEl('button');
+    btn.addEventListener('click', function (evt) {
+        submitNewPassword();
+    });
+    btn.textContent = 'Submit';
+    addEl(sdiv, btn);
+    addEl(div, sdiv);
+    var headerDiv = document.getElementById('headerdiv');
+    addEl(headerdiv, div);
+    /*
+    var btn = getEl('button');
+    btn.id = 'loginsignupbutton';
+    btn.addEventListener('click', function (evt) {
+        toggleloginsignupdiv();
+    });
+    addEl(div, btn);
+    */
 }
 
