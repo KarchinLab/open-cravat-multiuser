@@ -3,7 +3,6 @@ function openSubmitPage (username) {
 }
 
 function openLoginPage () {
-    console.log('@@ calling login page');
     location.href = location.protocol + '//' + window.location.host + '/server/login.html';
 }
 
