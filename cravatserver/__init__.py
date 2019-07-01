@@ -26,9 +26,8 @@ class ServerAdminDb ():
             adminpassword = 'admin'
             m.update(adminpassword.encode('utf-16be'))
             adminpasswordhash = m.hexdigest()
-            self.cursor.execute('insert into users values ("admin", "{}", "", "", "")'.format(adminpasswordhash))
-            self.cursor.close()
-            self.db.commit()
+            await self.cursor.execute('insert into users values ("admin", "{}", "", "", "")'.format(adminpasswordhash))
+            await self.db.commit()
         else:
             self.db = await aiosqlite3.connect(admin_db_path)
             self.cursor = await self.db.cursor()

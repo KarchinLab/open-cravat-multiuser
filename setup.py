@@ -21,7 +21,8 @@ setup(
     package_data={
         'cravatserver': data_files,
     },
-    install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=1.6.0'],
+    #install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=1.6.0'],
+    install_requires=['aiohttp_session', 'cryptography',],
     packages=['cravatserver'],
     python_requires='>=3.6',
 )
