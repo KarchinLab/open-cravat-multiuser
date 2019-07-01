@@ -7,6 +7,8 @@ def readme ():
     except IOError:
         return ''
 
+data_files = ['cravatserver.css', 'cravatserver.js', 'login.html']
+
 setup(
     name='open-cravat-server',
     version='1.6.0',
@@ -16,6 +18,9 @@ setup(
     author_email='rkim@insilico.us.com',
     url='http://www.opencravat.org',
     license='',
+    package_data={
+        'cravatserver': data_files,
+    },
     install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=1.6.0'],
     packages=['cravatserver'],
     python_requires='>=3.6',
