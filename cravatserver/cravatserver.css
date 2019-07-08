@@ -75,3 +75,22 @@
     border: 1px solid black;
 }
 
+#admindiv {
+    position: relative;
+    top: 100px;
+    height: calc(100% - 100px);
+}
+
+.adminsection-title {
+    text-decoration: underline;
+}
+
+.adminsection-div {
+    /*border: 1px solid black;*/
+    padding: 10px;
+}
+
+.adminsection-div table {
+    margin: 20px;
+}
+

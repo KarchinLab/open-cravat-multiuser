@@ -244,7 +244,420 @@ function setupAdminMode () {
     document.getElementById('settingsdiv').style.display = 'none';
     document.getElementById('threedotsdiv').style.display = 'block';
     $('#storediv_tabhead[value=storediv]')[0].style.display = 'inline-block';
+    $('#admindiv_tabhead[value=admindiv]')[0].style.display = 'inline-block';
+    document.getElementById('admindiv_tabhead').setAttribute('disabled', 'f');
     document.getElementById('submitcontentdiv').style.display = 'none';
+    populateAdminTab();
+}
+
+function getDateStr (d) {
+    var year = d.getFullYear();
+    var month = d.getMonth() + 1;
+    if (month < 10) {
+        month = '0' + month;
+    } else {
+        month = '' + month;
+    }
+    var day = d.getDate();
+    if (day < 10) {
+        day = '0' + day;
+    } else {
+        day = '' + day;
+    }
+    var datestr = year + '-' + month + '-' + day;
+    return datestr;
+}
+
+function populateAdminTab () {
+    var div = document.getElementById('admindiv');
+    // date range
+    var sdiv = getEl('div');
+    var span = getEl('span');
+    span.textContent = 'Date range:';
+    addEl(sdiv, span);
+    var input = getEl('input');
+    input.id = 'admindiv-startdate-input';
+    input.type = 'date';
+    input.style.marginLeft = '10px';
+    var startDate = new Date();
+    var startDate = new Date(startDate.setDate(startDate.getDate() - 7));
+    var datestr = getDateStr(startDate);
+    input.value = datestr;
+    addEl(sdiv, input);
+    var span = getEl('span');
+    span.textContent = '~';
+    span.style.marginLeft = '10px';
+    addEl(sdiv, span);
+    var input = getEl('input');
+    input.id = 'admindiv-enddate-input';
+    input.type = 'date';
+    input.style.marginLeft = '10px';
+    var datestr = getDateStr(new Date());
+    input.value = datestr;
+    addEl(sdiv, input);
+    var btn = getEl('button');
+    btn.textContent = 'Update';
+    btn.style.marginLeft = '10px';
+    btn.addEventListener('click', function (evt) {
+        updateAdminTabContent();
+    });
+    addEl(sdiv, btn);
+    addEl(div, sdiv);
+    // input stat
+    var sdiv = getEl('div');
+    sdiv.id = 'admindiv-inputstat-div';
+    sdiv.className = 'adminsection-div';
+    addEl(div, sdiv);
+    var span = getEl('span');
+    span.className = 'adminsection-title';
+    span.textContent = 'Input Stats';
+    addEl(sdiv, span);
+    var ssdiv = getEl('div');
+    ssdiv.id = 'admindiv-inputstat-contentdiv';
+    addEl(sdiv, ssdiv);
+    // job stat
+    var sdiv = getEl('div');
+    sdiv.id = 'admindiv-jobstat-div';
+    sdiv.className = 'adminsection-div';
+    addEl(div, sdiv);
+    var span = getEl('span');
+    span.className = 'adminsection-title';
+    span.textContent = 'Job Stats';
+    addEl(sdiv, span);
+    var ssdiv = getEl('div');
+    ssdiv.id = 'admindiv-jobstat-contentdiv';
+    addEl(sdiv, ssdiv);
+    // user stat
+    var sdiv = getEl('div');
+    sdiv.id = 'admindiv-userstat-div';
+    sdiv.className = 'adminsection-div';
+    addEl(div, sdiv);
+    var span = getEl('span');
+    span.className = 'adminsection-title';
+    span.textContent = 'User Stats';
+    addEl(sdiv, span);
+    var ssdiv = getEl('div');
+    ssdiv.id = 'admindiv-userstat-contentdiv';
+    addEl(sdiv, ssdiv);
+    // annotation stat
+    var sdiv = getEl('div');
+    sdiv.id = 'admindiv-annotstat-div';
+    sdiv.className = 'adminsection-div';
+    addEl(div, sdiv);
+    var span = getEl('span');
+    span.className = 'adminsection-title';
+    span.textContent = 'Annotation Stats';
+    addEl(sdiv, span);
+    var ssdiv = getEl('div');
+    ssdiv.id = 'admindiv-annotstat-contentdiv';
+    addEl(sdiv, ssdiv);
+    // assembly stat
+    var sdiv = getEl('div');
+    sdiv.id = 'admindiv-assemblystat-div';
+    sdiv.className = 'adminsection-div';
+    addEl(div, sdiv);
+    var span = getEl('span');
+    span.className = 'adminsection-title';
+    span.textContent = 'Assembly Stats';
+    addEl(sdiv, span);
+    var ssdiv = getEl('div');
+    ssdiv.id = 'admindiv-assemblystat-contentdiv';
+    addEl(sdiv, ssdiv);
+    updateAdminTabContent();
+}
+
+function updateAdminTabContent () {
+    populateInputStatDiv();
+    populateUserStatDiv();
+    populateJobStatDiv();
+    populateAnnotStatDiv();
+    populateAssemblyStatDiv();
+}
+
+function populateInputStatDiv () {
+    var startDate = document.getElementById('admindiv-startdate-input').value;
+    var endDate = document.getElementById('admindiv-enddate-input').value;
+    var sdiv = document.getElementById('admindiv-inputstat-contentdiv');
+    $(sdiv).empty();
+    var table = getEl('table');
+    addEl(sdiv, table);
+    $.ajax({
+        url: '/server/inputstat',
+        data: {'start_date':startDate, 'end_date':endDate},
+        success: function (response) {
+            var totN = response[0];
+            var maxN = response[1];
+            var avgN = response[2];
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Total number of input lines:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = totN;
+            addEl(tr, td);
+            addEl(table, tr);
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Maximum number of input lines:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = maxN;
+            addEl(tr, td);
+            addEl(table, tr);
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Average number of input lines:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = Math.round(avgN);
+            addEl(tr, td);
+            addEl(table, tr);
+        },
+    });
+}
+
+function populateUserStatDiv () {
+    var startDate = document.getElementById('admindiv-startdate-input').value;
+    var endDate = document.getElementById('admindiv-enddate-input').value;
+    var sdiv = document.getElementById('admindiv-userstat-contentdiv');
+    $(sdiv).empty();
+    var table = getEl('table');
+    addEl(sdiv, table);
+    $.ajax({
+        url: '/server/userstat',
+        data: {'start_date':startDate, 'end_date':endDate},
+        success: function (response) {
+            //
+            var num_uniq_user = response['num_uniq_user'];
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Number of unique users:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = num_uniq_user;
+            addEl(tr, td);
+            addEl(table, tr);
+            //
+            var frequent = response['frequent'];
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Most frequent user:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = frequent[0];
+            addEl(tr, td);
+            addEl(table, tr);
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = '\xa0\xa0Number of jobs:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = frequent[1];
+            addEl(tr, td);
+            addEl(table, tr);
+            //
+            var heaviest = response['heaviest'];
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Heaviest user:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = heaviest[0];
+            addEl(tr, td);
+            addEl(table, tr);
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = '\xa0\xa0Number of input:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = heaviest[1];
+            addEl(tr, td);
+            addEl(table, tr);
+        },
+    });
+}
+
+function populateJobStatDiv () {
+    var startDate = document.getElementById('admindiv-startdate-input').value;
+    var endDate = document.getElementById('admindiv-enddate-input').value;
+    var sdiv = document.getElementById('admindiv-jobstat-contentdiv');
+    $(sdiv).empty();
+    var table = getEl('table');
+    addEl(sdiv, table);
+    var canvas = getEl('canvas');
+    addEl(sdiv, canvas);
+    $.ajax({
+        url: '/server/jobstat',
+        data: {'start_date':startDate, 'end_date':endDate},
+        success: function (response) {
+            //
+            var num_jobs = response['num_jobs'];
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Total number of jobs:\xa0';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = num_jobs;
+            addEl(tr, td);
+            addEl(table, tr);
+            var chartdata = response['chartdata'];
+            var submits = chartdata[0];
+            var counts = chartdata[1];
+			var chart = new Chart(canvas, {
+				type: 'bar',
+				data: {
+					datasets: [{
+						data: counts,
+					}],
+					labels: submits,
+				},
+                options: {
+                    scales: {
+                        xAxes: [{
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Date',
+                            },
+                        }],
+                        yAxes: [{
+                            ticks: {
+                                min: 0,
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Number of Jobs',
+                            },
+                        }],
+                    },
+                    elements: {
+                        line: {
+                            tension: 0,
+                        },
+                    },
+                    legend: {
+                        display: false,
+                    },
+                },
+			});
+        },
+    });
+}
+
+function populateAnnotStatDiv () {
+    var startDate = document.getElementById('admindiv-startdate-input').value;
+    var endDate = document.getElementById('admindiv-enddate-input').value;
+    var sdiv = document.getElementById('admindiv-annotstat-contentdiv');
+    $(sdiv).empty();
+    sdiv.style.width = '800px';
+    sdiv.style.height = '700px';
+    var table = getEl('table');
+    addEl(sdiv, table);
+    var chartdiv = getEl('canvas');
+    chartdiv.id = 'admindiv-annotstat-chart1';
+    /*
+    chartdiv.style.width = '400px';
+    chartdiv.style.height = '400px';
+    chartdiv.width = 400;
+    chartdiv.height = 400;
+    */
+    addEl(sdiv, chartdiv);
+    $.ajax({
+        url: '/server/annotstat',
+        data: {'start_date':startDate, 'end_date':endDate},
+        success: function (response) {
+            //
+            var annotCount = response['annot_count'];
+            var annots = Object.keys(annotCount);
+            for (var i = 0; i < annots.length - 1; i++) {
+                for (var j = i + 1; j < annots.length; j++) {
+                    if (annotCount[annots[i]] < annotCount[annots[j]]) {
+                        var tmp = annots[i];
+                        annots[i] = annots[j];
+                        annots[j] = tmp;
+                    }
+                }
+            }
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Module';
+            td.style.textDecoration = 'underline';
+            td.style.textDecorationColor = '#aaaaaa';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = 'Number of jobs';
+            td.style.textDecoration = 'underline';
+            td.style.textDecorationColor = '#aaaaaa';
+            addEl(tr, td);
+            addEl(table, tr);
+            var tbody = getEl('tbody');
+            addEl(table, tbody);
+            var counts = [];
+            for (var i = 0; i < annots.length; i++) {
+                var tr = getEl('tr');
+                var td = getEl('td');
+                td.textContent = annots[i];
+                addEl(tr, td);
+                var td = getEl('td');
+                td.textContent = annotCount[annots[i]];
+                counts.push(annotCount[annots[i]]);
+                addEl(tr, td);
+                addEl(table, tr);
+            }
+			var chart = new Chart(chartdiv, {
+				type: 'doughnut',
+				data: {
+					datasets: [{
+						data: counts,
+					}],
+					labels: annots,
+				},
+			});
+        },
+    });
+}
+
+function populateAssemblyStatDiv () {
+    var startDate = document.getElementById('admindiv-startdate-input').value;
+    var endDate = document.getElementById('admindiv-enddate-input').value;
+    var sdiv = document.getElementById('admindiv-assemblystat-contentdiv');
+    $(sdiv).empty();
+    var table = getEl('table');
+    addEl(sdiv, table);
+    $.ajax({
+        url: '/server/assemblystat',
+        data: {'start_date':startDate, 'end_date':endDate},
+        success: function (response) {
+            var thead = getEl('thead');
+            var tr = getEl('tr');
+            var td = getEl('td');
+            td.textContent = 'Genome assembly';
+            td.style.textDecoration = 'underline';
+            td.style.textDecorationColor = '#aaaaaa';
+            addEl(tr, td);
+            var td = getEl('td');
+            td.textContent = 'Number of jobs';
+            td.style.textDecoration = 'underline';
+            td.style.textDecorationColor = '#aaaaaa';
+            addEl(tr, td);
+            addEl(table, tr);
+            var tbody = getEl('tbody');
+            addEl(table, tbody);
+            for (var i = 0; i < response.length; i++) {
+                var tr = getEl('tr');
+                var td = getEl('td');
+                td.textContent = response[i][0];
+                addEl(tr, td);
+                var td = getEl('td');
+                td.textContent = response[i][1];
+                addEl(tr, td);
+                addEl(table, tr);
+            }
+        },
+    });
 }
 
 function msgAccountDiv (msg) {

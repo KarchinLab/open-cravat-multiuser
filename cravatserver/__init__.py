@@ -9,6 +9,8 @@ import aiosqlite3
 import asyncio
 import os
 import hashlib
+from cravat.constants import admindb_path
+import datetime
 
 class ServerAdminDb ():
     def __init__ (self):
@@ -16,12 +18,11 @@ class ServerAdminDb ():
 
     async def init (self):
         conf_dir = au.get_conf_dir()
-        admin_db_path = os.path.join(conf_dir, 'admin.sqlite')
-        if os.path.exists(admin_db_path) == False:
-            self.db = await aiosqlite3.connect(admin_db_path)
+        if os.path.exists(admindb_path) == False:
+            self.db = await aiosqlite3.connect(admindb_path)
             self.cursor = await self.db.cursor()
             await self.cursor.execute('create table users (email text, passwordhash text, sessionkey text, question text, answerhash text)')
-            await self.cursor.execute('create table jobs (jobname text, username text, submit date, runtime integer, numinput integer, annotators text, genome text)')
+            await self.cursor.execute('create table jobs (jobid text, username text, submit date, runtime integer, numinput integer, annotators text, assembly text)')
             m = hashlib.sha256()
             adminpassword = 'admin'
             m.update(adminpassword.encode('utf-16be'))
@@ -29,7 +30,7 @@ class ServerAdminDb ():
             await self.cursor.execute('insert into users values ("admin", "{}", "", "", "")'.format(adminpasswordhash))
             await self.db.commit()
         else:
-            self.db = await aiosqlite3.connect(admin_db_path)
+            self.db = await aiosqlite3.connect(admindb_path)
             self.cursor = await self.db.cursor()
 
     async def check_sessionkey (self, username, sessionkey):
@@ -54,8 +55,8 @@ class ServerAdminDb ():
         else:
             return False
     
-    async def add_job_info (self, job_id, username, submission_time, assembly):
-        await self.cursor.execute('insert into jobs values ("{}", "{}", "{}", {}, {}, "{}", "{}")'.format(job_id, username, 'submission_time', -1, -1, '', assembly))
+    async def add_job_info (self, username, job):
+        await self.cursor.execute('insert into jobs values ("{}", "{}", "{}", {}, {}, "{}", "{}")'.format(job.info['id'], username, job.info['submission_time'], -1, -1, ','.join(job.info['annotators']), job.info['assembly']))
         await self.db.commit()
 
     async def check_username_presence (self, username):
@@ -103,6 +104,106 @@ class ServerAdminDb ():
         await self.cursor.execute('update users set passwordhash="{}" where email="{}"'.format(passwordhash, email))
         await self.db.commit()
 
+    async def get_input_stat (self, start_date, end_date):
+        db = await aiosqlite3.connect(admindb_path)
+        cursor = await self.db.cursor()
+        q = 'select sum(numinput), max(numinput), avg(numinput) from jobs where submit>="{}" and submit<="{}" and numinput!=-1'.format(start_date, end_date)
+        await cursor.execute(q)
+        row = await cursor.fetchall()
+        row = row[0]
+        s = row[0] if row[0] is not None else 0
+        m = row[1] if row[1] is not None else 0
+        a = row[2] if row[2] is not None else 0
+        response = [s, m, a]
+        await cursor.close()
+        await db.close()
+        return response
+
+    async def get_user_stat (self, start_date, end_date):
+        db = await aiosqlite3.connect(admindb_path)
+        cursor = await self.db.cursor()
+        q = 'select count(distinct username) from jobs where submit>="{}" and submit<="{}"'.format(start_date, end_date)
+        await cursor.execute(q)
+        row = await cursor.fetchone()
+        if row is None:
+            num_unique_users = 0
+        else:
+            num_unique_users = row[0]
+        q = 'select username, count(*) as c from jobs where submit>="{}" and submit<="{}" group by username order by c desc limit 1'.format(start_date, end_date)
+        await cursor.execute(q)
+        row = await cursor.fetchone()
+        if row is None:
+            (frequent_user, frequent_user_num_jobs) = (0, 0)
+        else:
+            (frequent_user, frequent_user_num_jobs) = row
+        q = 'select username, sum(numinput) s from jobs where submit>="{}" and submit<="{}" group by username order by s desc limit 1'.format(start_date, end_date)
+        await cursor.execute(q)
+        row = await cursor.fetchone()
+        if row is None:
+            (heaviest_user, heaviest_user_num_input) = (0, 0)
+        else:
+            (heaviest_user, heaviest_user_num_input) = row
+        response = {'num_uniq_user': num_unique_users, 'frequent':[frequent_user, frequent_user_num_jobs], 'heaviest':[heaviest_user, heaviest_user_num_input]}
+        await cursor.close()
+        await db.close()
+        return response
+
+    async def get_job_stat (self, start_date, end_date):
+        db = await aiosqlite3.connect(admindb_path)
+        cursor = await self.db.cursor()
+        q = 'select count(*) from jobs where submit>="{}" and submit<="{}"'.format(start_date, end_date)
+        await cursor.execute(q)
+        row = await cursor.fetchone()
+        if row is None:
+            num_jobs = 0
+        else:
+            num_jobs = row[0]
+        q = 'select date(submit) as d, count(*) as c from jobs where submit>="{}" and submit<="{}" group by d order by d asc'.format(start_date, end_date)
+        await cursor.execute(q)
+        rows = await cursor.fetchall()
+        submits = []
+        counts = []
+        for row in rows:
+            submits.append(row[0])
+            counts.append(row[1])
+        response = {'num_jobs': num_jobs, 'chartdata': [submits, counts]}
+        await cursor.close()
+        await db.close()
+        return response
+
+    async def get_annot_stat (self, start_date, end_date):
+        db = await aiosqlite3.connect(admindb_path)
+        cursor = await self.db.cursor()
+        q = 'select annotators from jobs where submit>="{}" and submit<="{}"'.format(start_date, end_date)
+        await cursor.execute(q)
+        rows = await cursor.fetchall()
+        annot_count = {}
+        for row in rows:
+            annots = row[0].split(',')
+            for annot in annots:
+                if not annot in annot_count:
+                    annot_count[annot] = 0
+                annot_count[annot] += 1
+        response = {'annot_count': annot_count}
+        await cursor.close()
+        await db.close()
+        return response
+
+    async def get_assembly_stat (self, start_date, end_date):
+        db = await aiosqlite3.connect(admindb_path)
+        cursor = await self.db.cursor()
+        q = 'select assembly, count(*) as c from jobs where submit>="{}" and submit<="{}" group by assembly order by c desc'.format(start_date, end_date)
+        await cursor.execute(q)
+        rows = await cursor.fetchall()
+        assembly_count = []
+        for row in rows:
+            (assembly, count) = row
+            assembly_count.append([assembly, count])
+        response = assembly_count
+        await cursor.close()
+        await db.close()
+        return response
+
 loop = asyncio.get_event_loop()
 admindb = ServerAdminDb()
 async def admindbinit ():
@@ -140,10 +241,10 @@ async def get_username (request):
     session = await get_session(request)
     return session['username']
 
-async def add_job_info (request, job, job_options):
+async def add_job_info (request, job):
     session = await get_session(request)
     username = session['username']
-    await admindb.add_job_info(job.info['id'], username, job.get_info_dict()['submission_time'], job_options['assembly'])
+    await admindb.add_job_info(username, job)
 
 def create_user_dir_if_not_exist (username):
     root_jobs_dir = au.get_jobs_dir()
@@ -308,6 +409,76 @@ async def logout (request):
         response = 'no server mode'
     return web.json_response(response)
 
+async def get_input_stat (request):
+    '''
+    if not servermode:
+        return web.json_response('no server mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    '''
+    queries = request.rel_url.query
+    start_date = queries['start_date']
+    end_date = queries['end_date']
+    rows = await admindb.get_input_stat(start_date, end_date)
+    return web.json_response(rows)
+
+async def get_user_stat (request):
+    '''
+    if not servermode:
+        return web.json_response('no server mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    '''
+    queries = request.rel_url.query
+    start_date = queries['start_date']
+    end_date = queries['end_date']
+    rows = await admindb.get_user_stat(start_date, end_date)
+    return web.json_response(rows)
+
+async def get_job_stat (request):
+    '''
+    if not servermode:
+        return web.json_response('no server mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    '''
+    queries = request.rel_url.query
+    start_date = queries['start_date']
+    end_date = queries['end_date']
+    response = await admindb.get_job_stat(start_date, end_date)
+    return web.json_response(response)
+
+async def get_annot_stat (request):
+    '''
+    if not servermode:
+        return web.json_response('no server mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    '''
+    queries = request.rel_url.query
+    start_date = queries['start_date']
+    end_date = queries['end_date']
+    response = await admindb.get_annot_stat(start_date, end_date)
+    return web.json_response(response)
+
+async def get_assembly_stat (request):
+    '''
+    if not servermode:
+        return web.json_response('no server mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    '''
+    queries = request.rel_url.query
+    start_date = queries['start_date']
+    end_date = queries['end_date']
+    response = await admindb.get_assembly_stat(start_date, end_date)
+    return web.json_response(response)
+
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
     router.add_route('GET', '/server/logout', logout)
@@ -316,5 +487,10 @@ def add_routes (router):
     router.add_route('GET', '/server/passwordanswer', check_password_answer)
     router.add_route('GET', '/server/changepassword', change_password)
     router.add_route('GET', '/server/checklogged', check_logged)
+    router.add_route('GET', '/server/inputstat', get_input_stat)
+    router.add_route('GET', '/server/userstat', get_user_stat)
+    router.add_route('GET', '/server/jobstat', get_job_stat)
+    router.add_route('GET', '/server/annotstat', get_annot_stat)
+    router.add_route('GET', '/server/assemblystat', get_assembly_stat)
     router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 
