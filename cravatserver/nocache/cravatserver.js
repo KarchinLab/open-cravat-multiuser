@@ -733,7 +733,7 @@ function addAccountDiv (username) {
     logoutDiv.id = 'logdiv';
     addEl(div, logoutDiv);
     var btn = getEl('img');
-    btn.src = '/submit/pwchng.png';
+    btn.src = '/server/pwchng.png';
     btn.addEventListener('click', function (evt) {
         changePassword();
     });
@@ -743,7 +743,7 @@ function addAccountDiv (username) {
     span.textContent = '\xa0\xa0';
     addEl(logoutDiv, span);
     var btn = getEl('img');
-    btn.src = '/submit/logout.png';
+    btn.src = '/server/logout.png';
     btn.addEventListener('click', function (evt) {
         logout();
     });
