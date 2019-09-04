@@ -3,7 +3,7 @@ function openSubmitPage (username) {
 }
 
 function openLoginPage () {
-    location.href = location.protocol + '//' + window.location.host + '/server/login.html';
+    location.href = location.protocol + '//' + window.location.host + '/server/nocache/login.html';
 }
 
 function login () {
@@ -242,7 +242,7 @@ function doAfterLogin (username) {
 
 function setupAdminMode () {
     document.getElementById('settingsdiv').style.display = 'none';
-    document.getElementById('threedotsdiv').style.display = 'block';
+    document.querySelector('.threedotsdiv').style.display = 'block';
     $('#storediv_tabhead[value=storediv]')[0].style.display = 'inline-block';
     $('#admindiv_tabhead[value=admindiv]')[0].style.display = 'inline-block';
     document.getElementById('admindiv_tabhead').setAttribute('disabled', 'f');
@@ -660,11 +660,66 @@ function populateAssemblyStatDiv () {
     });
 }
 
+/*
+function getEl (tag) {
+    return document.createElement(tag);
+}
+
+function addEl (pelem, child) {
+	pelem.appendChild(child);
+	return pelem;
+}
+
+function showYesNoDialog (content, yescallback, noSpace, justOk) {
+    var div = document.getElementById('yesnodialog');
+    if (div != undefined) {
+        $(div).remove();
+    }
+    var div = getEl('div');
+    div.id = 'yesnodialog';
+    content.id = 'yesnodialog-contentdiv'
+    addEl(div, content);
+    addEl(div, getEl('br'));
+    var btnDiv = getEl('div');
+    if (justOk) {
+        btnDiv.className = 'buttondiv';
+        var btn = getEl('button');
+        btn.textContent = 'Ok';
+        btn.addEventListener('click', function (evt) {
+            $('#yesnodialog').remove();
+        });
+        addEl(btnDiv, btn);
+    } else {
+        btnDiv.className = 'buttondiv';
+        var btn = getEl('button');
+        btn.textContent = 'Yes';
+        btn.addEventListener('click', function (evt) {
+            $('#yesnodialog').remove();
+            yescallback(true);
+        });
+        if (noSpace) {
+            btn.disabled = true;
+            btn.style.backgroundColor = '#e0e0e0';
+        }
+        addEl(btnDiv, btn);
+        var btn = getEl('button');
+        btn.textContent = 'No';
+        btn.addEventListener('click', function (evt) {
+            $('#yesnodialog').remove();
+            yescallback(false);
+        });
+        addEl(btnDiv, btn);
+    }
+    addEl(div, btnDiv);
+    addEl(document.body, div);
+}
+*/
+
 function msgAccountDiv (msg) {
-    document.getElementById('accountmsgdiv').textContent = msg;
-    setTimeout(function () {
-        document.getElementById('accountmsgdiv').textContent = '';
-    }, 3000);
+    var div = getEl('div');
+    div.textContent = msg;
+    showYesNoDialog(div, null, false, true);
+    //function showYesNoDialog (content, yescallback, noSpace, justOk) {
 }
 
 function addAccountDiv (username) {
@@ -672,21 +727,27 @@ function addAccountDiv (username) {
     div.id = 'accountdiv';
     var userDiv = getEl('span');
     userDiv.id = 'userdiv';
-    userDiv.textContent = username;
+    userDiv.textContent = username + '\xa0';
     addEl(div, userDiv);
     var logoutDiv = getEl('div');
+    logoutDiv.id = 'logdiv';
     addEl(div, logoutDiv);
-    var btn = getEl('button');
+    var btn = getEl('img');
+    btn.src = '/submit/pwchng.png';
     btn.addEventListener('click', function (evt) {
         changePassword();
     });
-    btn.textContent = 'Change password';
+    btn.title = 'Change password';
     addEl(logoutDiv, btn);
-    var btn = getEl('button');
+    var span = getEl('span');
+    span.textContent = '\xa0\xa0';
+    addEl(logoutDiv, span);
+    var btn = getEl('img');
+    btn.src = '/submit/logout.png';
     btn.addEventListener('click', function (evt) {
         logout();
     });
-    btn.textContent = 'Logout';
+    btn.title = 'Logout';
     addEl(logoutDiv, btn);
     var sdiv = getEl('div');
     sdiv.id = 'changepassworddiv';
@@ -715,14 +776,15 @@ function addAccountDiv (username) {
     addEl(sdiv, input);
     addEl(sdiv, getEl('br'));
     var btn = getEl('button');
+    btn.classList.add('butn');
     btn.addEventListener('click', function (evt) {
         submitNewPassword();
     });
     btn.textContent = 'Submit';
     addEl(sdiv, btn);
     addEl(div, sdiv);
-    var headerDiv = document.getElementById('headerdiv');
-    addEl(headerdiv, div);
+    var headerDiv = document.querySelector('.headerdiv');
+    addEl(headerDiv, div);
     /*
     var btn = getEl('button');
     btn.id = 'loginsignupbutton';

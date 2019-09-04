@@ -232,7 +232,7 @@ async def new_session (request):
 async def is_admin_loggedin (request):
     session = await get_session(request)
     r = await is_loggedin(request)
-    if session['username'] == 'admin' and r:
+    if 'username' in session and session['username'] == 'admin' and r:
         return True
     else:
         return False

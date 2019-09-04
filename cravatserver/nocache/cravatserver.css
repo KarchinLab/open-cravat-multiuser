@@ -94,3 +94,55 @@
     margin: 20px;
 }
 
+#accountdiv {
+    position: absolute;
+    right: 96px;
+    top: 4px;
+}
+
+#accountdiv span {
+    font-size: 12px;
+}
+
+#logdiv {
+    display: inline-block;
+}
+
+#logdiv img {
+    height: 18px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+body * {
+    font-family: 'roboto-light';
+}
+
+@font-face {
+    font-family: 'roboto-medium';
+    src: url('/result/fonts/roboto-medium-webfont.woff') format('woff'),
+         url('/result/fonts/roboto-medium-webfont.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'roboto-light';
+    src: url('/result/fonts/roboto-light-webfont.woff') format('woff'),
+         url('/result/fonts/roboto-light-webfont.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'roboto-bold';
+    src: url('/result/fonts/roboto-bold-webfont.woff') format('woff'),
+         url('/result/fonts/roboto-bold-webfont.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'sourcesanspro-bold';
+    src: url('/result/fonts/sourcesanspro-bold-webfont.woff') format('woff'),
+         url('/result/fonts/sourcesanspro-bold-webfont.woff2') format('woff2');
+}
+
+#yesnodialog {
+    z-index: 202;
+}
+
