@@ -181,6 +181,9 @@ function signupSubmit () {
                 document.getElementById('loginsignupbutton').style.display = 'none';
                 document.getElementById('signupdiv').style.display = 'none';
                 */
+		document.getElementById('login_username').value = username;
+		document.getElementById('login_password').value = password;
+                msgAccountDiv('Signup successful', login);
             } else if (response == 'fail') {
                 msgAccountDiv('Signup failed');
             }
@@ -715,10 +718,10 @@ function showYesNoDialog (content, yescallback, noSpace, justOk) {
 }
 */
 
-function msgAccountDiv (msg) {
+function msgAccountDiv (msg, callback) {
     var div = getEl('div');
     div.textContent = msg;
-    showYesNoDialog(div, null, false, true);
+    showYesNoDialog(div, callback, false, true);
     //function showYesNoDialog (content, yescallback, noSpace, justOk) {
 }
 
