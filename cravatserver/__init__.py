@@ -34,9 +34,11 @@ class ServerAdminDb ():
             self.cursor = await self.db.cursor()
 
     async def check_sessionkey (self, username, sessionkey):
+        cursor = await self.db.cursor()
         q = 'select * from users where email="{}" and sessionkey="{}"'.format(username, sessionkey)
-        await self.cursor.execute(q)
-        r = await self.cursor.fetchone()
+        await cursor.execute(q)
+        r = await cursor.fetchone()
+        cursor.close()
         if r is not None:
             return True
         else:
@@ -253,6 +255,7 @@ def create_user_dir_if_not_exist (username):
         os.mkdir(user_job_dir)
 
 async def signup (request):
+    global servermode
     if servermode:
         queries = request.rel_url.query
         username = queries['username']
@@ -307,6 +310,7 @@ async def login (request):
     return web.json_response(response)
 
 async def get_password_question (request):
+    global servermode
     if servermode:
         queries = request.rel_url.query
         email = queries['email']
@@ -320,6 +324,7 @@ async def get_password_question (request):
     return web.json_response(response)
 
 async def check_password_answer (request):
+    global servermode
     if servermode:
         queries = request.rel_url.query
         email = queries['email']
@@ -344,6 +349,7 @@ async def set_temp_password (request):
     return temppassword
 
 async def change_password (request):
+    global servermode
     if servermode:
         session = await get_session(request)
         if 'username' not in session:
@@ -378,6 +384,7 @@ async def is_loggedin (request):
     return response
 
 async def check_logged (request):
+    global servermode
     if servermode:
         if 'Cache-Control' in request.headers:
             session = await new_session(request)
@@ -401,6 +408,7 @@ async def check_logged (request):
     return web.json_response(response)
 
 async def logout (request):
+    global servermode
     if servermode:
         session = await new_session(request)
         session['username'] = None
@@ -410,13 +418,12 @@ async def logout (request):
     return web.json_response(response)
 
 async def get_input_stat (request):
-    '''
+    global servermode
     if not servermode:
         return web.json_response('no server mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
-    '''
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -424,13 +431,12 @@ async def get_input_stat (request):
     return web.json_response(rows)
 
 async def get_user_stat (request):
-    '''
+    global servermode
     if not servermode:
         return web.json_response('no server mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
-    '''
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -438,13 +444,12 @@ async def get_user_stat (request):
     return web.json_response(rows)
 
 async def get_job_stat (request):
-    '''
+    global servermode
     if not servermode:
         return web.json_response('no server mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
-    '''
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -452,13 +457,12 @@ async def get_job_stat (request):
     return web.json_response(response)
 
 async def get_annot_stat (request):
-    '''
+    global servermode
     if not servermode:
         return web.json_response('no server mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
-    '''
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
@@ -466,17 +470,48 @@ async def get_annot_stat (request):
     return web.json_response(response)
 
 async def get_assembly_stat (request):
-    '''
+    global servermode
     if not servermode:
         return web.json_response('no server mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
-    '''
     queries = request.rel_url.query
     start_date = queries['start_date']
     end_date = queries['end_date']
     response = await admindb.get_assembly_stat(start_date, end_date)
+    return web.json_response(response)
+
+async def restart (request):
+    global servermode
+    if not servermode:
+        return web.json_response('no server mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    global restarted
+    queries = request.rel_url.query
+    if 'maxnumconcurjobs' in queries:
+        system_conf = au.get_system_conf()
+        max_num_concurrent_jobs = queries['maxnumconcurjobs']
+        try:
+            system_conf['max_num_concurrent_jobs'] = int(max_num_concurrent_jobs)
+            au.write_system_conf_file(system_conf)
+            print('Maximum number of concurrent jobs set to {}.'.format(max_num_concurrent_jobs))
+        except:
+            print('Wrong format for maximum number of concurrent jobs: {}'.format(max_num_concurrent_jobs))
+    os.execvp('wcravat', ['wcravat', '--server', '--restart'])
+
+async def get_max_num_concurrent_jobs (request):
+    global servermode
+    if not servermode:
+        return web.json_response('no server mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    sys_conf = au.get_system_conf()
+    max_num_concurrent_jobs = sys_conf['max_num_concurrent_jobs']
+    response = max_num_concurrent_jobs
     return web.json_response(response)
 
 def add_routes (router):
@@ -492,5 +527,7 @@ def add_routes (router):
     router.add_route('GET', '/server/jobstat', get_job_stat)
     router.add_route('GET', '/server/annotstat', get_annot_stat)
     router.add_route('GET', '/server/assemblystat', get_assembly_stat)
+    router.add_route('GET', '/server/restart', restart)
+    router.add_route('GET', '/server/maxnumconcurrentjobs', get_max_num_concurrent_jobs)
     router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 

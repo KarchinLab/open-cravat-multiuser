@@ -366,6 +366,32 @@ function populateAdminTab () {
     var ssdiv = getEl('div');
     ssdiv.id = 'admindiv-assemblystat-contentdiv';
     addEl(sdiv, ssdiv);
+    // max num concurrent jobs
+    var sdiv = getEl('div');
+    var span = getEl('span');
+    span.textContent = 'Maximum number of concurrent jobs in this server:\xa0';
+    addEl(sdiv, span);
+    var input = getEl('input');
+    input.id = 'max_num_concurrent_jobs_input';
+    addEl(sdiv, input);
+    addEl(sdiv, getEl('br'));
+    addEl(div, sdiv);
+    // Restart button
+    var btn = getEl('button');
+    btn.textContent = 'Restart Server';
+    btn.addEventListener('click', function (evt) {
+        var maxNumConcurJobs = document.querySelector('#max_num_concurrent_jobs_input').value;
+        var url = '/server/restart';
+        if (maxNumConcurJobs != '') {
+            url = url + '?maxnumconcurjobs=' + maxNumConcurJobs;
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.send();
+        location.href = '/server/nocache/login.html';
+    });
+    addEl(sdiv, btn);
+    // Final
     updateAdminTabContent();
 }
 
@@ -375,6 +401,16 @@ function updateAdminTabContent () {
     populateJobStatDiv();
     populateAnnotStatDiv();
     populateAssemblyStatDiv();
+    populateMaxNumConcurrentJobsInput();
+}
+
+function populateMaxNumConcurrentJobsInput () {
+    $.ajax({
+        url: '/server/maxnumconcurrentjobs',
+        success: function (response) {
+            document.querySelector('#max_num_concurrent_jobs_input').value = response;
+        },
+    });
 }
 
 function populateInputStatDiv () {
