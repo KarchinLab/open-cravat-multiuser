@@ -275,9 +275,12 @@ function populateAdminTab () {
     var div = document.getElementById('admindiv');
     // date range
     var sdiv = getEl('div');
+    sdiv.className = 'adminsection-div';
     var span = getEl('span');
-    span.textContent = 'Date range:';
+    span.className = 'adminsection-title';
+    span.textContent = 'Date range';
     addEl(sdiv, span);
+    var ssdiv = getEl('div');
     var input = getEl('input');
     input.id = 'admindiv-startdate-input';
     input.type = 'date';
@@ -286,25 +289,33 @@ function populateAdminTab () {
     var startDate = new Date(startDate.setDate(startDate.getDate() - 7));
     var datestr = getDateStr(startDate);
     input.value = datestr;
-    addEl(sdiv, input);
+    addEl(ssdiv, input);
     var span = getEl('span');
     span.textContent = '~';
     span.style.marginLeft = '10px';
-    addEl(sdiv, span);
+    addEl(ssdiv, span);
     var input = getEl('input');
     input.id = 'admindiv-enddate-input';
     input.type = 'date';
     input.style.marginLeft = '10px';
     var datestr = getDateStr(new Date());
     input.value = datestr;
-    addEl(sdiv, input);
+    addEl(ssdiv, input);
     var btn = getEl('button');
     btn.textContent = 'Update';
     btn.style.marginLeft = '10px';
     btn.addEventListener('click', function (evt) {
         updateAdminTabContent();
     });
-    addEl(sdiv, btn);
+    addEl(ssdiv, btn);
+    var btn = getEl('button');
+    btn.textContent = 'Export';
+    btn.style.marginLeft = '10px';
+    btn.addEventListener('click', function (evt) {
+        exportContentAdminPanel();
+    });
+    addEl(ssdiv, btn);
+    addEl(sdiv, ssdiv);
     addEl(div, sdiv);
     // input stat
     var sdiv = getEl('div');
@@ -391,6 +402,7 @@ function populateAdminTab () {
         location.href = '/server/nocache/login.html';
     });
     addEl(sdiv, btn);
+    addEl(div, getEl('br'));
     // Final
     updateAdminTabContent();
 }
@@ -832,5 +844,53 @@ function addAccountDiv (username) {
     });
     addEl(div, btn);
     */
+}
+
+function exportContentAdminPanel (tabName) {
+	var content = '';
+	document.querySelectorAll('.adminsection-div').forEach(function (div) {
+		var title = div.querySelector('span').textContent;
+		content += '* ' + title + '\n';
+		var contentDiv = div.querySelector('div');
+		var table = contentDiv.querySelector('table');
+		if (table != undefined) {
+			var trs = table.querySelectorAll('tr');
+			for (var i = 0; i < trs.length; i++) {
+				var tr = trs[i];
+				var tds = tr.querySelectorAll('td');
+				var line = '';
+				for (var j = 0; j < tds.length; j++) {
+					var td = tds[j];
+					line += td.textContent.replace(/\xa0/g, ' ') + '\t';
+				}
+				content += line + '\n';
+			}
+		} else {
+			var line = '';
+			var sdivs = contentDiv.children;
+			for (var i = 0; i < sdivs.length; i++) {
+				var sdiv = sdivs[i];
+				var tagName = sdiv.tagName;
+				if (tagName == 'BUTTON') {
+					continue;
+				}
+				var value = sdiv.textContent;
+				if (tagName == 'INPUT') {
+					value = sdiv.value;
+				}
+				line += value + '\t';
+			}
+			content += line + '\n';
+		}
+		content += '\n';
+	});
+	content += '\n';
+	var a = getEl('a');
+	a.href = window.URL.createObjectURL(
+			new Blob([content], {type: 'text/tsv'}));
+	a.download = 'OpenCRAVAT_admin_stats.tsv';
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
 }
 
