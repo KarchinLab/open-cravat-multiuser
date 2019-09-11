@@ -241,7 +241,11 @@ async def is_admin_loggedin (request):
 
 async def get_username (request):
     session = await get_session(request)
-    return session['username']
+    if 'username' in session:
+        username = session['username']
+    else:
+        username = None
+    return username
 
 async def add_job_info (request, job):
     session = await get_session(request)
@@ -484,12 +488,14 @@ async def get_assembly_stat (request):
 
 async def restart (request):
     global servermode
-    if not servermode:
-        return web.json_response('no server mode')
-    r = await is_admin_loggedin(request)
-    if r == False:
-        return web.json_response('no admin')
-    global restarted
+    if servermode:
+        username = await get_username(request)
+        if username != 'admin':
+            return web.json_response({'success': False, 'msg': 'Only admin can change the settings.'})
+        r = await is_loggedin(request)
+        if r == False:
+            return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
+    '''
     queries = request.rel_url.query
     if 'maxnumconcurjobs' in queries:
         system_conf = au.get_system_conf()
@@ -500,19 +506,8 @@ async def restart (request):
             print('Maximum number of concurrent jobs set to {}.'.format(max_num_concurrent_jobs))
         except:
             print('Wrong format for maximum number of concurrent jobs: {}'.format(max_num_concurrent_jobs))
-    os.execvp('wcravat', ['wcravat', '--server', '--restart'])
-
-async def get_max_num_concurrent_jobs (request):
-    global servermode
-    if not servermode:
-        return web.json_response('no server mode')
-    r = await is_admin_loggedin(request)
-    if r == False:
-        return web.json_response('no admin')
-    sys_conf = au.get_system_conf()
-    max_num_concurrent_jobs = sys_conf['max_num_concurrent_jobs']
-    response = max_num_concurrent_jobs
-    return web.json_response(response)
+    '''
+    os.execvp('wcravat', ['wcravat', '--server', '--donotopenbrowser'])
 
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
@@ -528,6 +523,5 @@ def add_routes (router):
     router.add_route('GET', '/server/annotstat', get_annot_stat)
     router.add_route('GET', '/server/assemblystat', get_assembly_stat)
     router.add_route('GET', '/server/restart', restart)
-    router.add_route('GET', '/server/maxnumconcurrentjobs', get_max_num_concurrent_jobs)
     router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 

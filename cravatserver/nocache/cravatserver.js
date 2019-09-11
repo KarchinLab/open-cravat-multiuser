@@ -169,20 +169,8 @@ function signupSubmit () {
             if (response == 'already registered') {
                 msgAccountDiv('Already registered');
             } else if (response == 'success') {
-                /*
-                populateJobs();
-                msgAccountDiv('Account created');
-                document.getElementById('loginsignupbutton').style.display = 'none';
-                var userDiv = document.getElementById('userdiv');
-                userDiv.textContent = username;
-                userDiv.style.display = 'inline-block';
-                document.getElementById('logoutdiv').style.display = 'inline-block';
-                toggleloginsignupdiv();
-                document.getElementById('loginsignupbutton').style.display = 'none';
-                document.getElementById('signupdiv').style.display = 'none';
-                */
-		document.getElementById('login_username').value = username;
-		document.getElementById('login_password').value = password;
+                document.getElementById('login_username').value = username;
+                document.getElementById('login_password').value = password;
                 msgAccountDiv('Signup successful', login);
             } else if (response == 'fail') {
                 msgAccountDiv('Signup failed');
@@ -210,29 +198,10 @@ function checkLogged (username) {
 
 function showLoggedControl (username) {
     addAccountDiv(username);
-    /*
-    var userDiv = document.getElementById('userdiv');
-    userDiv.textContent = username;
-    userDiv.style.display = 'inline-block';
-    document.getElementById('logoutdiv').style.display = 'inline-block';
-    document.getElementById('headerdiv').style.display = 'block';
-    document.getElementById('submitdiv').style.display = 'block';
-    */
 }
 
 function showUnloggedControl () {
     openLoginPage();
-    /*
-    var userDiv = document.getElementById('userdiv');
-    userDiv.textContent = '';
-    userDiv.style.display = 'none';
-    document.getElementById('logoutdiv').style.display = 'none';
-    document.getElementById('threedotsdiv').style.display = 'none';
-    $('#storediv_tabhead[value=storediv]')[0].style.display = 'none';
-    document.getElementById('submitdiv').style.display = 'block';
-    document.getElementById('storediv').style.display = 'none';
-    document.getElementById('loginsignupbutton').style.display = 'none';
-    */
 }
 
 function doAfterLogin (username) {
@@ -377,25 +346,11 @@ function populateAdminTab () {
     var ssdiv = getEl('div');
     ssdiv.id = 'admindiv-assemblystat-contentdiv';
     addEl(sdiv, ssdiv);
-    // max num concurrent jobs
-    var sdiv = getEl('div');
-    var span = getEl('span');
-    span.textContent = 'Maximum number of concurrent jobs in this server:\xa0';
-    addEl(sdiv, span);
-    var input = getEl('input');
-    input.id = 'max_num_concurrent_jobs_input';
-    addEl(sdiv, input);
-    addEl(sdiv, getEl('br'));
-    addEl(div, sdiv);
     // Restart button
     var btn = getEl('button');
     btn.textContent = 'Restart Server';
     btn.addEventListener('click', function (evt) {
-        var maxNumConcurJobs = document.querySelector('#max_num_concurrent_jobs_input').value;
         var url = '/server/restart';
-        if (maxNumConcurJobs != '') {
-            url = url + '?maxnumconcurjobs=' + maxNumConcurJobs;
-        }
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
         xhr.send();
@@ -413,16 +368,6 @@ function updateAdminTabContent () {
     populateJobStatDiv();
     populateAnnotStatDiv();
     populateAssemblyStatDiv();
-    populateMaxNumConcurrentJobsInput();
-}
-
-function populateMaxNumConcurrentJobsInput () {
-    $.ajax({
-        url: '/server/maxnumconcurrentjobs',
-        success: function (response) {
-            document.querySelector('#max_num_concurrent_jobs_input').value = response;
-        },
-    });
 }
 
 function populateInputStatDiv () {
@@ -609,12 +554,6 @@ function populateAnnotStatDiv () {
     addEl(sdiv, table);
     var chartdiv = getEl('canvas');
     chartdiv.id = 'admindiv-annotstat-chart1';
-    /*
-    chartdiv.style.width = '400px';
-    chartdiv.style.height = '400px';
-    chartdiv.width = 400;
-    chartdiv.height = 400;
-    */
     addEl(sdiv, chartdiv);
     $.ajax({
         url: '/server/annotstat',
@@ -711,66 +650,10 @@ function populateAssemblyStatDiv () {
     });
 }
 
-/*
-function getEl (tag) {
-    return document.createElement(tag);
-}
-
-function addEl (pelem, child) {
-	pelem.appendChild(child);
-	return pelem;
-}
-
-function showYesNoDialog (content, yescallback, noSpace, justOk) {
-    var div = document.getElementById('yesnodialog');
-    if (div != undefined) {
-        $(div).remove();
-    }
-    var div = getEl('div');
-    div.id = 'yesnodialog';
-    content.id = 'yesnodialog-contentdiv'
-    addEl(div, content);
-    addEl(div, getEl('br'));
-    var btnDiv = getEl('div');
-    if (justOk) {
-        btnDiv.className = 'buttondiv';
-        var btn = getEl('button');
-        btn.textContent = 'Ok';
-        btn.addEventListener('click', function (evt) {
-            $('#yesnodialog').remove();
-        });
-        addEl(btnDiv, btn);
-    } else {
-        btnDiv.className = 'buttondiv';
-        var btn = getEl('button');
-        btn.textContent = 'Yes';
-        btn.addEventListener('click', function (evt) {
-            $('#yesnodialog').remove();
-            yescallback(true);
-        });
-        if (noSpace) {
-            btn.disabled = true;
-            btn.style.backgroundColor = '#e0e0e0';
-        }
-        addEl(btnDiv, btn);
-        var btn = getEl('button');
-        btn.textContent = 'No';
-        btn.addEventListener('click', function (evt) {
-            $('#yesnodialog').remove();
-            yescallback(false);
-        });
-        addEl(btnDiv, btn);
-    }
-    addEl(div, btnDiv);
-    addEl(document.body, div);
-}
-*/
-
 function msgAccountDiv (msg, callback) {
     var div = getEl('div');
     div.textContent = msg;
     showYesNoDialog(div, callback, false, true);
-    //function showYesNoDialog (content, yescallback, noSpace, justOk) {
 }
 
 function addAccountDiv (username) {
@@ -836,14 +719,6 @@ function addAccountDiv (username) {
     addEl(div, sdiv);
     var headerDiv = document.querySelector('.headerdiv');
     addEl(headerDiv, div);
-    /*
-    var btn = getEl('button');
-    btn.id = 'loginsignupbutton';
-    btn.addEventListener('click', function (evt) {
-        toggleloginsignupdiv();
-    });
-    addEl(div, btn);
-    */
 }
 
 function exportContentAdminPanel (tabName) {
