@@ -32,19 +32,18 @@ class ServerAdminDb ():
         else:
             self.db = await aiosqlite3.connect(admindb_path)
             self.cursor = await self.db.cursor()
+        self.sessions = {}
+        await self.cursor.execute('select sessionkey, email from users')
+        r = await self.cursor.fetchall()
+        for row in r:
+            sessionkey, email = row
+            self.sessions[email] = sessionkey
 
     async def check_sessionkey (self, username, sessionkey):
-        cursor = await self.db.cursor()
-        q = 'select * from users where email="{}" and sessionkey="{}"'.format(username, sessionkey)
-        await cursor.execute(q)
-        r = await cursor.fetchone()
-        cursor.close()
-        if r is not None:
-            return True
-        else:
-            return False
-    
+        return sessionkey == self.sessions.get(username)
+
     async def set_sessionkey (self, username, sessionkey):
+        self.sessions[username] = sessionkey
         await self.cursor.execute('update users set sessionkey="{}" where email="{}"'.format(sessionkey, username))
         await self.db.commit()
 
@@ -74,6 +73,7 @@ class ServerAdminDb ():
         await self.db.commit()
 
     async def store_sessionkey (self, username, sessionkey):
+        self.sessions[username]= sessionkey
         await self.cursor.execute('update users set sessionkey="{}" where email="{}"'.format(sessionkey, username))
         await self.db.commit()
 
