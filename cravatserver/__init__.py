@@ -6,6 +6,7 @@ import aiohttp_session
 import base64
 from cravat import admin_util as au
 import aiosqlite3
+import sqlite3
 import asyncio
 import os
 import hashlib
@@ -14,30 +15,35 @@ import datetime
 
 class ServerAdminDb ():
     def __init__ (self):
-        pass
-
-    async def init (self):
-        conf_dir = au.get_conf_dir()
-        if os.path.exists(admindb_path) == False:
-            self.db = await aiosqlite3.connect(admindb_path)
-            self.cursor = await self.db.cursor()
-            await self.cursor.execute('create table users (email text, passwordhash text, sessionkey text, question text, answerhash text)')
-            await self.cursor.execute('create table jobs (jobid text, username text, submit date, runtime integer, numinput integer, annotators text, assembly text)')
+        initdb = not os.path.exists(admindb_path)
+        db = sqlite3.connect(admindb_path)
+        cursor = db.cursor()
+        if initdb:    
+            cursor.execute('create table users (email text, passwordhash text, sessionkey text, question text, answerhash text)')
             m = hashlib.sha256()
             adminpassword = 'admin'
             m.update(adminpassword.encode('utf-16be'))
             adminpasswordhash = m.hexdigest()
-            await self.cursor.execute('insert into users values ("admin", "{}", "", "", "")'.format(adminpasswordhash))
-            await self.db.commit()
+            cursor.execute('insert into users values ("admin", "{}", "", "", "")'.format(adminpasswordhash))
+            db.commit()
+            cursor.execute('create table jobs (jobid text, username text, submit date, runtime integer, numinput integer, annotators text, assembly text)')
+            cursor.execute('create table config (key text, value text)')
+            fernet_key = fernet.Fernet.generate_key()
+            cursor.execute('insert into config (key, value) values ("fernet_key",?)',[fernet_key])
+            db.commit()
         else:
-            self.db = await aiosqlite3.connect(admindb_path)
-            self.cursor = await self.db.cursor()
+            cursor.execute('select value from config where key="fernet_key"')
+            fernet_key = cursor.fetchone()[0]
+        self.secret_key = base64.urlsafe_b64decode(fernet_key)
         self.sessions = {}
-        await self.cursor.execute('select sessionkey, email from users')
-        r = await self.cursor.fetchall()
-        for row in r:
+        cursor.execute('select sessionkey, email from users')
+        for row in cursor:
             sessionkey, email = row
             self.sessions[email] = sessionkey
+
+    async def init (self):
+        self.db = await aiosqlite3.connect(admindb_path)
+        self.cursor = await self.db.cursor()
 
     async def check_sessionkey (self, username, sessionkey):
         return sessionkey == self.sessions.get(username)
@@ -218,9 +224,7 @@ def get_session_key ():
     return session_key
 
 def setup (app):
-    fernet_key = fernet.Fernet.generate_key()
-    secret_key = base64.urlsafe_b64decode(fernet_key)
-    cookie = EncryptedCookieStorage(secret_key)
+    cookie = EncryptedCookieStorage(admindb.secret_key)
     aiohttp_session.setup(app, cookie)
 
 async def get_session (request):
