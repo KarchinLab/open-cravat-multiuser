@@ -38,17 +38,23 @@ class ServerAdminDb ():
             fernet_key = cursor.fetchone()[0]
         self.secret_key = base64.urlsafe_b64decode(fernet_key)
         self.sessions = defaultdict(set)
-        cursor.execute('select username, sessionkey from sessions')
-        for row in cursor:
-            username, sessionkey = row
-            self.sessions[username].add(sessionkey)
 
     async def init (self):
         self.db = await aiosqlite3.connect(admindb_path)
         self.cursor = await self.db.cursor()
 
     async def check_sessionkey (self, username, sessionkey):
-        return sessionkey in self.sessions.get(username)
+        print(self.sessions)
+        if sessionkey in self.sessions[username]:
+            return True
+        else:
+            await self.cursor.execute('select username from sessions where sessionkey = ?',[sessionkey])
+            r = await self.cursor.fetchone()
+            if r and r[0] == username:
+                self.sessions[username].add(sessionkey)
+                return True
+            else:
+                return False
 
     async def add_sessionkey (self, username, sessionkey):
         self.sessions[username].add(sessionkey)
