@@ -6,46 +6,64 @@ import aiohttp_session
 import base64
 from cravat import admin_util as au
 import aiosqlite3
+import sqlite3
 import asyncio
 import os
 import hashlib
 from cravat.constants import admindb_path
 import datetime
+from collections import defaultdict
 
 class ServerAdminDb ():
     def __init__ (self):
-        pass
-
-    async def init (self):
-        conf_dir = au.get_conf_dir()
-        if os.path.exists(admindb_path) == False:
-            self.db = await aiosqlite3.connect(admindb_path)
-            self.cursor = await self.db.cursor()
-            await self.cursor.execute('create table users (email text, passwordhash text, sessionkey text, question text, answerhash text)')
-            await self.cursor.execute('create table jobs (jobid text, username text, submit date, runtime integer, numinput integer, annotators text, assembly text)')
+        initdb = not os.path.exists(admindb_path)
+        db = sqlite3.connect(admindb_path)
+        cursor = db.cursor()
+        if initdb:    
+            cursor.execute('create table users (email text, passwordhash text, question text, answerhash text)')
             m = hashlib.sha256()
             adminpassword = 'admin'
             m.update(adminpassword.encode('utf-16be'))
             adminpasswordhash = m.hexdigest()
-            await self.cursor.execute('insert into users values ("admin", "{}", "", "", "")'.format(adminpasswordhash))
-            await self.db.commit()
+            cursor.execute('insert into users values ("admin", "{}", "", "")'.format(adminpasswordhash))
+            db.commit()
+            cursor.execute('create table jobs (jobid text, username text, submit date, runtime integer, numinput integer, annotators text, assembly text)')
+            cursor.execute('create table config (key text, value text)')
+            fernet_key = fernet.Fernet.generate_key()
+            cursor.execute('insert into config (key, value) values ("fernet_key",?)',[fernet_key])
+            cursor.execute('create table sessions (username text, sessionkey text)')
+            db.commit()
         else:
-            self.db = await aiosqlite3.connect(admindb_path)
-            self.cursor = await self.db.cursor()
+            cursor.execute('select value from config where key="fernet_key"')
+            fernet_key = cursor.fetchone()[0]
+        self.secret_key = base64.urlsafe_b64decode(fernet_key)
+        self.sessions = defaultdict(set)
+
+    async def init (self):
+        self.db = await aiosqlite3.connect(admindb_path)
+        self.cursor = await self.db.cursor()
 
     async def check_sessionkey (self, username, sessionkey):
-        cursor = await self.db.cursor()
-        q = 'select * from users where email="{}" and sessionkey="{}"'.format(username, sessionkey)
-        await cursor.execute(q)
-        r = await cursor.fetchone()
-        cursor.close()
-        if r is not None:
+        print(self.sessions)
+        if sessionkey in self.sessions[username]:
             return True
         else:
-            return False
+            await self.cursor.execute('select username from sessions where sessionkey = ?',[sessionkey])
+            r = await self.cursor.fetchone()
+            if r and r[0] == username:
+                self.sessions[username].add(sessionkey)
+                return True
+            else:
+                return False
+
+    async def add_sessionkey (self, username, sessionkey):
+        self.sessions[username].add(sessionkey)
+        await self.cursor.execute('insert into sessions (username, sessionkey) values (?, ?)',[username, sessionkey])
+        await self.db.commit()
     
-    async def set_sessionkey (self, username, sessionkey):
-        await self.cursor.execute('update users set sessionkey="{}" where email="{}"'.format(sessionkey, username))
+    async def remove_sessionkey(self, username, sessionkey):
+        self.sessions[username].remove(sessionkey)
+        await self.cursor.execute('delete from sessions where username=? and sessionkey=?',[username, sessionkey])
         await self.db.commit()
 
     async def check_password (self, username, passwordhash):
@@ -70,11 +88,7 @@ class ServerAdminDb ():
             return True
 
     async def add_user (self, username, passwordhash, question, answerhash):
-        await self.cursor.execute('insert into users values ("{}", "{}", "{}", "{}", "{}")'.format(username, passwordhash, "", question, answerhash))
-        await self.db.commit()
-
-    async def store_sessionkey (self, username, sessionkey):
-        await self.cursor.execute('update users set sessionkey="{}" where email="{}"'.format(sessionkey, username))
+        await self.cursor.execute('insert into users values ("{}", "{}", "{}", "{}")'.format(username, passwordhash, question, answerhash))
         await self.db.commit()
 
     async def get_password_question (self, email):
@@ -218,9 +232,7 @@ def get_session_key ():
     return session_key
 
 def setup (app):
-    fernet_key = fernet.Fernet.generate_key()
-    secret_key = base64.urlsafe_b64decode(fernet_key)
-    cookie = EncryptedCookieStorage(secret_key)
+    cookie = EncryptedCookieStorage(admindb.secret_key)
     aiohttp_session.setup(app, cookie)
 
 async def get_session (request):
@@ -283,7 +295,7 @@ async def signup (request):
             create_user_dir_if_not_exist(username)
             sessionkey = get_session_key()
             session['sessionkey'] = sessionkey
-            await admindb.store_sessionkey(username, sessionkey)
+            await admindb.add_sessionkey(username, sessionkey)
             response = 'success'
     else:
         response = 'fail'
@@ -305,7 +317,7 @@ async def login (request):
             session['logged'] = True
             sessionkey = get_session_key()
             session['sessionkey'] = sessionkey
-            await admindb.set_sessionkey(username, sessionkey)
+            await admindb.add_sessionkey(username, sessionkey)
             response = 'success'
         else:
             response = 'fail'
@@ -414,8 +426,10 @@ async def check_logged (request):
 async def logout (request):
     global servermode
     if servermode:
-        session = await new_session(request)
-        session['username'] = None
+        session = await get_session(request)
+        await admindb.remove_sessionkey(session['username'], session['sessionkey'])
+        ns = await new_session(request)
+        ns['username'] = None
         response = 'success'
     else:
         response = 'no server mode'
