@@ -271,6 +271,7 @@ function populateAdminTab () {
     input.value = datestr;
     addEl(ssdiv, input);
     var btn = getEl('button');
+    btn.classList.add('butn');
     btn.textContent = 'Update';
     btn.style.marginLeft = '10px';
     btn.addEventListener('click', function (evt) {
@@ -278,6 +279,7 @@ function populateAdminTab () {
     });
     addEl(ssdiv, btn);
     var btn = getEl('button');
+    btn.classList.add('butn');
     btn.textContent = 'Export';
     btn.style.marginLeft = '10px';
     btn.addEventListener('click', function (evt) {
