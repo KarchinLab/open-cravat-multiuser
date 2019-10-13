@@ -44,7 +44,6 @@ class ServerAdminDb ():
         self.cursor = await self.db.cursor()
 
     async def check_sessionkey (self, username, sessionkey):
-        print(self.sessions)
         if sessionkey in self.sessions[username]:
             return True
         else:
@@ -509,18 +508,6 @@ async def restart (request):
         r = await is_loggedin(request)
         if r == False:
             return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
-    '''
-    queries = request.rel_url.query
-    if 'maxnumconcurjobs' in queries:
-        system_conf = au.get_system_conf()
-        max_num_concurrent_jobs = queries['maxnumconcurjobs']
-        try:
-            system_conf['max_num_concurrent_jobs'] = int(max_num_concurrent_jobs)
-            au.write_system_conf_file(system_conf)
-            print('Maximum number of concurrent jobs set to {}.'.format(max_num_concurrent_jobs))
-        except:
-            print('Wrong format for maximum number of concurrent jobs: {}'.format(max_num_concurrent_jobs))
-    '''
     os.execvp('wcravat', ['wcravat', '--server', '--donotopenbrowser'])
 
 def add_routes (router):
