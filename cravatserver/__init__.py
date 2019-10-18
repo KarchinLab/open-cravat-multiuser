@@ -31,7 +31,7 @@ class ServerAdminDb ():
             cursor.execute('create table config (key text, value text)')
             fernet_key = fernet.Fernet.generate_key()
             cursor.execute('insert into config (key, value) values ("fernet_key",?)',[fernet_key])
-            cursor.execute('create table sessions (username text, sessionkey text)')
+            cursor.execute('create table sessions (username text, sessionkey text, last_active text default current_timestamp, primary key (username, sessionkey))')
             db.commit()
         else:
             cursor.execute('select value from config where key="fernet_key"')
@@ -63,6 +63,18 @@ class ServerAdminDb ():
     async def remove_sessionkey(self, username, sessionkey):
         self.sessions[username].remove(sessionkey)
         await self.cursor.execute('delete from sessions where username=? and sessionkey=?',[username, sessionkey])
+        await self.db.commit()
+
+    async def update_last_active(self, username, sessionkey):
+        await self.cursor.execute('update sessions set last_active = current_timestamp where username=? and sessionkey=?',[username, sessionkey])
+        await self.db.commit()
+
+    async def clean_sessions(self):
+        """
+        Delete sessions older than a week. Expect that this threshold will change later,
+        requiring arguments to this function.
+        """
+        await self.cursor.execute('delete from sessions where last_active <= datetime(current_timestamp,"-7 days")')
         await self.db.commit()
 
     async def check_password (self, username, passwordhash):
@@ -224,6 +236,13 @@ admindb = ServerAdminDb()
 async def admindbinit ():
     await admindb.init()
 loop.create_task(admindbinit())
+
+async def update_last_active(request):
+    session = await get_session(request)
+    username = session.get('username')
+    sessionkey = session.get('sessionkey')
+    if username and sessionkey:
+        await admindb.update_last_active(username, sessionkey)
 
 def get_session_key ():
     fernet_key = fernet.Fernet.generate_key()
