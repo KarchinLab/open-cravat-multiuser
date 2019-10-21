@@ -1,5 +1,5 @@
 function openSubmitPage (username) {
-    location.href = location.protocol + '//' + window.location.host + '/submit/index.html?username=' + username;
+    location.href = location.protocol + '//' + window.location.host + '/submit/index.html';
 }
 
 function openLoginPage () {

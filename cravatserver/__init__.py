@@ -19,6 +19,7 @@ class ServerAdminDb ():
         initdb = not os.path.exists(admindb_path)
         db = sqlite3.connect(admindb_path)
         cursor = db.cursor()
+        self.sessions = defaultdict(set)
         if initdb:    
             cursor.execute('create table users (email text, passwordhash text, question text, answerhash text)')
             m = hashlib.sha256()
@@ -36,21 +37,28 @@ class ServerAdminDb ():
         else:
             cursor.execute('select value from config where key="fernet_key"')
             fernet_key = cursor.fetchone()[0]
+            cursor.execute('select username, sessionkey from sessions')
+            rows = cursor.fetchall()
+            for row in rows:
+                (username, sessionkey) = row
+                if username not in self.sessions:
+                    self.sessions[username] = set()
+                self.sessions[username].add(sessionkey)
         self.secret_key = base64.urlsafe_b64decode(fernet_key)
-        self.sessions = defaultdict(set)
 
     async def init (self):
         self.db = await aiosqlite3.connect(admindb_path)
         self.cursor = await self.db.cursor()
 
     async def check_sessionkey (self, username, sessionkey):
-        if sessionkey in self.sessions[username]:
-            return True
+        if username not in self.sessions or sessionkey not in self.sessions[username]:
+            return False
         else:
             await self.cursor.execute('select username from sessions where sessionkey = ?',[sessionkey])
             r = await self.cursor.fetchone()
             if r and r[0] == username:
-                self.sessions[username].add(sessionkey)
+                if sessionkey not in self.sessions[username]:
+                    self.sessions[username].add(sessionkey)
                 return True
             else:
                 return False
@@ -242,10 +250,20 @@ async def new_session (request):
     session = await aiohttp_session.new_session(request)
     return session
 
-async def is_admin_loggedin (request):
+async def is_loggedin (request):
     session = await get_session(request)
+    if 'username' not in session or 'sessionkey' not in session:
+        response = False
+    else:
+        response = await admindb.check_sessionkey(session['username'], session['sessionkey'])
+    return response
+
+async def is_admin_loggedin (request):
     r = await is_loggedin(request)
-    if 'username' in session and session['username'] == 'admin' and r:
+    if r == False:
+        return False
+    session = await get_session(request)
+    if 'username' in session and 'admin' is session['username']:
         return True
     else:
         return False
@@ -289,10 +307,9 @@ async def signup (request):
         else:
             await admindb.add_user(username, passwordhash, question, answerhash)
             session = await get_session(request)
-            session['username'] = username
-            session['logged'] = True
             create_user_dir_if_not_exist(username)
             sessionkey = get_session_key()
+            session['username'] = username
             session['sessionkey'] = sessionkey
             await admindb.add_sessionkey(username, sessionkey)
             response = 'success'
@@ -311,9 +328,8 @@ async def login (request):
         passwordhash = m.hexdigest()
         r = await admindb.check_password(username, passwordhash)
         if r == True:
-            session = await new_session(request)
+            session = await get_session(request)
             session['username'] = username
-            session['logged'] = True
             sessionkey = get_session_key()
             session['sessionkey'] = sessionkey
             await admindb.add_sessionkey(username, sessionkey)
@@ -366,37 +382,33 @@ async def set_temp_password (request):
 async def change_password (request):
     global servermode
     if servermode:
-        session = await get_session(request)
-        if 'username' not in session:
-            response = 'Not logged in'
-            return response
-        email = session['username']
         queries = request.rel_url.query
         oldpassword = queries['oldpassword']
         newpassword = queries['newpassword']
+        r = await is_loggedin(request)
+        if r == False:
+            response = 'Not logged in'
+            return web.json_response(response)
+        session = await get_session(request)
+        if 'username' not in session:
+            response = 'Not logged in'
+            return web.json_response(response)
+        username = session['username']
         m = hashlib.sha256()
         m.update(oldpassword.encode('utf-16be'))
         oldpasswordhash = m.hexdigest()
-        r = await admindb.check_password(email, oldpasswordhash)
+        r = await admindb.check_password(username, oldpasswordhash)
         if r == False:
             response = 'User authentication failed.'
         else:
             m = hashlib.sha256()
             m.update(newpassword.encode('utf-16be'))
             newpasswordhash = m.hexdigest()
-            await admindb.set_password(email, newpasswordhash)
+            await admindb.set_password(username, newpasswordhash)
             response = 'success'
     else:
         response = 'no server mode'
     return web.json_response(response)
-
-async def is_loggedin (request):
-    session = await get_session(request)
-    if 'username' not in session or 'sessionkey' not in session:
-        response = False
-    else:
-        response = await admindb.check_sessionkey(session['username'], session['sessionkey'])
-    return response
 
 async def check_logged (request):
     global servermode
@@ -510,6 +522,21 @@ async def restart (request):
             return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
     os.execvp('wcravat', ['wcravat', '--server', '--donotopenbrowser'])
 
+async def show_login_page (request):
+    global servermode
+    global server_ready
+    if not servermode or not server_ready:
+        global logger
+        logger.info('Login page requested but no server mode. Redirecting to submit index...')
+        return web.HTTPFound('/submit/index.html')
+    r = await is_loggedin(request)
+    if r == False:
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nocache', 'login.html')
+        return web.FileResponse(p)
+    else:
+        logger.info('Login page requested but already logged in. Redirecting to submit index...')
+        return web.HTTPFound('/submit/index.html')
+
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
     router.add_route('GET', '/server/logout', logout)
@@ -524,5 +551,6 @@ def add_routes (router):
     router.add_route('GET', '/server/annotstat', get_annot_stat)
     router.add_route('GET', '/server/assemblystat', get_assembly_stat)
     router.add_route('GET', '/server/restart', restart)
+    router.add_route('GET', '/server/nocache/login.html', show_login_page)
     router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 
