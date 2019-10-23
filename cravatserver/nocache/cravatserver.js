@@ -1,3 +1,5 @@
+adminMode = false;
+
 function openSubmitPage (username) {
     location.href = location.protocol + '//' + window.location.host + '/submit/index.html';
 }
@@ -207,6 +209,7 @@ function showUnloggedControl () {
 function doAfterLogin (username) {
     showLoggedControl(username);
     if (username == 'admin') {
+        adminMode = true;
         setupAdminMode();
     }
     populateJobs();

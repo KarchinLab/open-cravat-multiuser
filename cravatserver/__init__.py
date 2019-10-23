@@ -54,8 +54,9 @@ class ServerAdminDb ():
         if username not in self.sessions or sessionkey not in self.sessions[username]:
             return False
         else:
-            await self.cursor.execute('select username from sessions where sessionkey = ?',[sessionkey])
-            r = await self.cursor.fetchone()
+            cursor = await self.db.cursor()
+            await cursor.execute('select username from sessions where sessionkey = ?',[sessionkey])
+            r = await cursor.fetchone()
             if r and r[0] == username:
                 if sessionkey not in self.sessions[username]:
                     self.sessions[username].add(sessionkey)
@@ -82,8 +83,9 @@ class ServerAdminDb ():
         Delete sessions older than a week. Expect that this threshold will change later,
         requiring arguments to this function.
         """
-        await self.cursor.execute('delete from sessions where last_active <= datetime(current_timestamp,"-7 days")')
-        await self.db.commit()
+        if hasattr(self, 'cursor'):
+            await self.cursor.execute('delete from sessions where last_active <= datetime(current_timestamp,"-7 days")')
+            await self.db.commit()
 
     async def check_password (self, username, passwordhash):
         q = 'select * from users where email="{}" and passwordhash="{}"'.format(username, passwordhash)
