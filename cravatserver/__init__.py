@@ -70,7 +70,7 @@ class ServerAdminDb ():
         await self.db.commit()
     
     async def remove_sessionkey(self, username, sessionkey):
-        self.sessions[username].remove(sessionkey)
+        self.sessions[username].discard(sessionkey)
         await self.cursor.execute('delete from sessions where username=? and sessionkey=?',[username, sessionkey])
         await self.db.commit()
 
