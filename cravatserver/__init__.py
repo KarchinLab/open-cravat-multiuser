@@ -78,13 +78,13 @@ class ServerAdminDb ():
         await self.cursor.execute('update sessions set last_active = current_timestamp where username=? and sessionkey=?',[username, sessionkey])
         await self.db.commit()
 
-    async def clean_sessions(self):
+    async def clean_sessions(self, max_age):
         """
         Delete sessions older than a week. Expect that this threshold will change later,
         requiring arguments to this function.
         """
         if hasattr(self, 'cursor'):
-            await self.cursor.execute('delete from sessions where last_active <= datetime(current_timestamp,"-7 days")')
+            await self.cursor.execute(f'delete from sessions where last_active <= datetime(current_timestamp,"-{max_age} seconds")')
             await self.db.commit()
 
     async def check_password (self, username, passwordhash):
