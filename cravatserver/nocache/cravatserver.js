@@ -774,3 +774,19 @@ function exportContentAdminPanel (tabName) {
 	document.body.removeChild(a);
 }
 
+function server_run () {
+    var submitBtn = document.querySelector('#login_button');
+    var el = document.querySelector('#login_username');
+    el.addEventListener('keyup', function (evt) {
+        if (evt.which == 13 || evt.keyCode == 13) {
+            login();
+        }
+    });
+    var el = document.querySelector('#login_password');
+    el.addEventListener('keyup', function (evt) {
+        if (evt.which == 13 || evt.keyCode == 13) {
+            login();
+        }
+    });
+}
+
