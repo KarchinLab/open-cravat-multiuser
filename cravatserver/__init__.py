@@ -283,7 +283,7 @@ async def is_admin_loggedin (request):
     if r == False:
         return False
     session = await get_session(request)
-    if 'username' in session and 'admin' is session['username']:
+    if 'username' in session and 'admin' in session['username']:
         return True
     else:
         return False
