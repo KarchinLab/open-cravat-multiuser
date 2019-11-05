@@ -774,7 +774,7 @@ function exportContentAdminPanel (tabName) {
 	document.body.removeChild(a);
 }
 
-function server_run () {
+function multiuser_run () {
     var submitBtn = document.querySelector('#login_button');
     var el = document.querySelector('#login_username');
     el.addEventListener('keyup', function (evt) {

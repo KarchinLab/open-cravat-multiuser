@@ -371,7 +371,7 @@ async def get_password_question (request):
         else:
             response = {'status':'success', 'msg': question}
     else:
-        response = {'status':'fail', 'msg':'no server mode'}
+        response = {'status':'fail', 'msg':'no multiuser mode'}
     return web.json_response(response)
 
 async def check_password_answer (request):
@@ -390,7 +390,7 @@ async def check_password_answer (request):
         else:
             response = {'success': False, 'msg': 'Wrong answer'}
     else:
-        response = {'success': False, 'msg': 'no server mode'}
+        response = {'success': False, 'msg': 'no multiuser mode'}
     return web.json_response(response)
 
 async def set_temp_password (request):
@@ -427,7 +427,7 @@ async def change_password (request):
             await admindb.set_password(username, newpasswordhash)
             response = 'success'
     else:
-        response = 'no server mode'
+        response = 'no multiuser mode'
     return web.json_response(response)
 
 async def check_logged (request):
@@ -451,7 +451,7 @@ async def check_logged (request):
                 email = ''
         response = {'logged': logged, 'email': email}
     else:
-        response = 'no server mode'
+        response = 'no multiuser mode'
     return web.json_response(response)
 
 async def logout (request):
@@ -463,13 +463,13 @@ async def logout (request):
         ns['username'] = None
         response = 'success'
     else:
-        response = 'no server mode'
+        response = 'no multiuser mode'
     return web.json_response(response)
 
 async def get_input_stat (request):
     global servermode
     if not servermode:
-        return web.json_response('no server mode')
+        return web.json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
@@ -482,7 +482,7 @@ async def get_input_stat (request):
 async def get_user_stat (request):
     global servermode
     if not servermode:
-        return web.json_response('no server mode')
+        return web.json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
@@ -495,7 +495,7 @@ async def get_user_stat (request):
 async def get_job_stat (request):
     global servermode
     if not servermode:
-        return web.json_response('no server mode')
+        return web.json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
@@ -508,7 +508,7 @@ async def get_job_stat (request):
 async def get_annot_stat (request):
     global servermode
     if not servermode:
-        return web.json_response('no server mode')
+        return web.json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
@@ -521,7 +521,7 @@ async def get_annot_stat (request):
 async def get_assembly_stat (request):
     global servermode
     if not servermode:
-        return web.json_response('no server mode')
+        return web.json_response('no multiuser mode')
     r = await is_admin_loggedin(request)
     if r == False:
         return web.json_response('no admin')
@@ -540,14 +540,14 @@ async def restart (request):
         r = await is_loggedin(request)
         if r == False:
             return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
-    os.execvp('wcravat', ['wcravat', '--server', '--donotopenbrowser'])
+    os.execvp('wcravat', ['wcravat', '--multiuser', '--donotopenbrowser'])
 
 async def show_login_page (request):
     global servermode
     global server_ready
     if not servermode or not server_ready:
         global logger
-        logger.info('Login page requested but no server mode. Redirecting to submit index...')
+        logger.info('Login page requested but no multiuser mode. Redirecting to submit index...')
         return web.HTTPFound('/submit/index.html')
     r = await is_loggedin(request)
     if r == False:

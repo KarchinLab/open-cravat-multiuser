@@ -7,22 +7,21 @@ def readme ():
     except IOError:
         return ''
 
-data_files = ['cravatserver.css', 'cravatserver.js', 'login.html']
+data_files = ['cravat_multiuser.css', 'cravat_multiuser.js', 'login.html']
 
 setup(
-    name='open-cravat-server',
+    name='open-cravat-multiuser',
     version='1.6.0',
-    description='OpenCRAVAT Server',
+    description='OpenCRAVAT Multiuser Addon',
     long_description=readme(),
     author='Rick Kim, Kyle Moad, Mike Ryan, and Rachel Karchin',
     author_email='rkim@insilico.us.com',
     url='http://www.opencravat.org',
     license='',
     package_data={
-        'cravatserver': data_files,
+        'cravat_multiuser': data_files,
     },
-    #install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=1.6.0'],
-    install_requires=['aiohttp_session', 'cryptography',],
-    packages=['cravatserver'],
+    install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=1.6.0'],
+    packages=['cravat_multiuser'],
     python_requires='>=3.6',
 )
