@@ -1,4 +1,5 @@
 from setuptools import setup
+import os
 
 def readme ():
     try:
@@ -7,7 +8,10 @@ def readme ():
     except IOError:
         return ''
 
-data_files = ['cravat_multiuser.css', 'cravat_multiuser.js', 'login.html']
+data_files = ['favicon.ico', 'favicon.png', 'logout.png', 'pwchng.png']
+for root, dirs, files in os.walk(os.path.join('cravat_multiuser', 'nocache')):
+    root_files = [os.path.join('..', root, f) for f in files]
+    data_files.extend(root_files)
 
 setup(
     name='open-cravat-multiuser',
