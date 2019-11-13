@@ -16,7 +16,7 @@ function login () {
         data: {'username':usernameSubmit, 'password':passwordSubmit},
         success: function (response) {
             if (response == 'success') {
-                username = usernameSubmit;
+                username = response['email'];
                 openSubmitPage(username);
             } else if (response == 'fail') {
                 msgAccountDiv('Login failed');
@@ -181,15 +181,14 @@ function signupSubmit () {
     });
 }
 
-function checkLogged (username) {
+function checkLogged (inUsername) {
     $.ajax({
         url: '/server/checklogged',
-        data: {'username': username},
+        data: {'username': inUsername},
         success: function (response) {
             logged = response['logged'];
             if (logged == true) {
                 username = response['email'];
-                logged = true;
                 doAfterLogin(username);
             } else {
                 showUnloggedControl();
