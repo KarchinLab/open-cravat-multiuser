@@ -13,6 +13,7 @@ import hashlib
 from cravat.constants import admindb_path
 import datetime
 from collections import defaultdict
+import json
 
 class ServerAdminDb ():
     def __init__ (self):
@@ -21,12 +22,12 @@ class ServerAdminDb ():
         cursor = db.cursor()
         self.sessions = defaultdict(set)
         if initdb:    
-            cursor.execute('create table users (email text, passwordhash text, question text, answerhash text)')
+            cursor.execute('create table users (email text, passwordhash text, question text, answerhash text, settings text)')
             m = hashlib.sha256()
             adminpassword = 'admin'
             m.update(adminpassword.encode('utf-16be'))
             adminpasswordhash = m.hexdigest()
-            cursor.execute('insert into users values ("admin", "{}", "", "")'.format(adminpasswordhash))
+            cursor.execute('insert into users values ("admin", "{}", "", "", null)'.format(adminpasswordhash))
             db.commit()
             cursor.execute('create table jobs (jobid text, username text, submit date, runtime integer, numinput integer, annotators text, assembly text)')
             cursor.execute('create table config (key text, value text)')
@@ -108,7 +109,8 @@ class ServerAdminDb ():
             return True
 
     async def add_user (self, username, passwordhash, question, answerhash):
-        await self.cursor.execute('insert into users values ("{}", "{}", "{}", "{}")'.format(username, passwordhash, question, answerhash))
+        default_settings = {'lastAssembly':None}
+        await self.cursor.execute('insert into users values (?, ?, ?, ?, ?)',[username, passwordhash, question, answerhash, json.dumps(default_settings)])
         await self.db.commit()
 
     async def get_password_question (self, email):
@@ -239,6 +241,28 @@ class ServerAdminDb ():
         await cursor.close()
         await db.close()
         return response
+
+    async def get_user_settings (self, username):
+        cursor = await self.db.cursor()
+        q = 'select settings from users where email=?'
+        await cursor.execute(q,[username])
+        r = await cursor.fetchone()
+        cursor.close()
+        if r is None:
+            return None
+        else:
+            settings = r[0]
+            if settings is None:
+                return {}
+            else:
+                return json.loads(settings)
+    
+    async def update_user_settings (self, username, d):
+        newsettings = await self.get_user_settings(username)
+        newsettings.update(d)
+        cursor = await self.db.cursor()
+        await cursor.execute('update users set settings=? where email=?',[json.dumps(newsettings), username])
+        cursor.close()
 
 loop = asyncio.get_event_loop()
 admindb = ServerAdminDb()
@@ -557,6 +581,15 @@ async def show_login_page (request):
         logger.info('Login page requested but already logged in. Redirecting to submit index...')
         return web.HTTPFound('/submit/index.html')
 
+async def get_user_settings (request):
+    session = await get_session(request)
+    response = await admindb.get_user_settings(session['username'])
+    return web.json_response(response)
+
+async def update_user_settings (request, d):
+    session = await get_session(request)
+    return await admindb.update_user_settings(session['username'], d)
+
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
     router.add_route('GET', '/server/logout', logout)
@@ -571,6 +604,7 @@ def add_routes (router):
     router.add_route('GET', '/server/annotstat', get_annot_stat)
     router.add_route('GET', '/server/assemblystat', get_assembly_stat)
     router.add_route('GET', '/server/restart', restart)
+    router.add_route('GET', '/server/usersettings', get_user_settings)
     router.add_route('GET', '/server/nocache/login.html', show_login_page)
     router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 
