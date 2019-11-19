@@ -143,7 +143,7 @@ class ServerAdminDb ():
     async def get_input_stat (self, start_date, end_date):
         db = await aiosqlite3.connect(admindb_path)
         cursor = await self.db.cursor()
-        q = 'select sum(numinput), max(numinput), avg(numinput) from jobs where submit>="{}" and submit<="{}" and numinput!=-1'.format(start_date, end_date)
+        q = 'select sum(numinput), max(numinput), avg(numinput) from jobs where submit>="{}" and submit<="{} 23:59:59" and numinput!=-1'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchall()
         row = row[0]
@@ -158,21 +158,21 @@ class ServerAdminDb ():
     async def get_user_stat (self, start_date, end_date):
         db = await aiosqlite3.connect(admindb_path)
         cursor = await self.db.cursor()
-        q = 'select count(distinct username) from jobs where submit>="{}" and submit<="{}"'.format(start_date, end_date)
+        q = 'select count(distinct username) from jobs where submit>="{}" and submit<="{}" 23:59:59'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchone()
         if row is None:
             num_unique_users = 0
         else:
             num_unique_users = row[0]
-        q = 'select username, count(*) as c from jobs where submit>="{}" and submit<="{}" group by username order by c desc limit 1'.format(start_date, end_date)
+        q = 'select username, count(*) as c from jobs where submit>="{}" and submit<="{} 23:59:59" group by username order by c desc limit 1'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchone()
         if row is None:
             (frequent_user, frequent_user_num_jobs) = (0, 0)
         else:
             (frequent_user, frequent_user_num_jobs) = row
-        q = 'select username, sum(numinput) s from jobs where submit>="{}" and submit<="{}" group by username order by s desc limit 1'.format(start_date, end_date)
+        q = 'select username, sum(numinput) s from jobs where submit>="{}" and submit<="{} 23:59:59" group by username order by s desc limit 1'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchone()
         if row is None:
@@ -187,14 +187,14 @@ class ServerAdminDb ():
     async def get_job_stat (self, start_date, end_date):
         db = await aiosqlite3.connect(admindb_path)
         cursor = await self.db.cursor()
-        q = 'select count(*) from jobs where submit>="{}" and submit<="{}"'.format(start_date, end_date)
+        q = 'select count(*) from jobs where submit>="{}" and submit<="{}" 23:59:59'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchone()
         if row is None:
             num_jobs = 0
         else:
             num_jobs = row[0]
-        q = 'select date(submit) as d, count(*) as c from jobs where submit>="{}" and submit<="{}" group by d order by d asc'.format(start_date, end_date)
+        q = 'select date(submit) as d, count(*) as c from jobs where submit>="{}" and submit<="{} 23:59:59" group by d order by d asc'.format(start_date, end_date)
         await cursor.execute(q)
         rows = await cursor.fetchall()
         submits = []
@@ -210,7 +210,7 @@ class ServerAdminDb ():
     async def get_annot_stat (self, start_date, end_date):
         db = await aiosqlite3.connect(admindb_path)
         cursor = await self.db.cursor()
-        q = 'select annotators from jobs where submit>="{}" and submit<="{}"'.format(start_date, end_date)
+        q = 'select annotators from jobs where submit>="{}" and submit<="{}" 23:59:59'.format(start_date, end_date)
         await cursor.execute(q)
         rows = await cursor.fetchall()
         annot_count = {}
@@ -228,7 +228,7 @@ class ServerAdminDb ():
     async def get_assembly_stat (self, start_date, end_date):
         db = await aiosqlite3.connect(admindb_path)
         cursor = await self.db.cursor()
-        q = 'select assembly, count(*) as c from jobs where submit>="{}" and submit<="{}" group by assembly order by c desc'.format(start_date, end_date)
+        q = 'select assembly, count(*) as c from jobs where submit>="{}" and submit<="{} 23:59:59" group by assembly order by c desc'.format(start_date, end_date)
         await cursor.execute(q)
         rows = await cursor.fetchall()
         assembly_count = []
