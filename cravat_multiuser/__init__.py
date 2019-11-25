@@ -268,7 +268,7 @@ loop = asyncio.get_event_loop()
 admindb = ServerAdminDb()
 async def admindbinit ():
     await admindb.init()
-loop.ensure_future(admindbinit())
+loop.create_task(admindbinit())
 
 async def update_last_active(request):
     session = await get_session(request)
