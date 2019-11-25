@@ -15,6 +15,8 @@ import datetime
 from collections import defaultdict
 import json
 
+admindb = None
+
 class ServerAdminDb ():
     def __init__ (self):
         initdb = not os.path.exists(admindb_path)
@@ -263,12 +265,6 @@ class ServerAdminDb ():
         cursor = await self.db.cursor()
         await cursor.execute('update users set settings=? where email=?',[json.dumps(newsettings), username])
         cursor.close()
-
-loop = asyncio.get_event_loop()
-admindb = ServerAdminDb()
-async def admindbinit ():
-    await admindb.init()
-loop.create_task(admindbinit())
 
 async def update_last_active(request):
     session = await get_session(request)
@@ -589,6 +585,11 @@ async def get_user_settings (request):
 async def update_user_settings (request, d):
     session = await get_session(request)
     return await admindb.update_user_settings(session['username'], d)
+
+async def setup_module ():
+    global admindb
+    admindb = ServerAdminDb()
+    await admindb.init()
 
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
