@@ -560,7 +560,7 @@ async def restart (request):
         r = await is_loggedin(request)
         if r == False:
             return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
-    os.execvp('wcravat', ['wcravat', '--multiuser', '--donotopenbrowser'])
+    os.execvp('wcravat', ['wcravat', '--multiuser', '--headless'])
 
 async def show_login_page (request):
     global servermode
