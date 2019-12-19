@@ -14,6 +14,7 @@ from cravat.constants import admindb_path
 import datetime
 from collections import defaultdict
 import json
+import time
 
 admindb = None
 
@@ -52,6 +53,7 @@ class ServerAdminDb ():
     async def init (self):
         self.db = await aiosqlite3.connect(admindb_path)
         self.cursor = await self.db.cursor()
+        await self.create_apilog_table_if_necessary()
 
     async def check_sessionkey (self, username, sessionkey):
         if username not in self.sessions or sessionkey not in self.sessions[username]:
@@ -99,7 +101,8 @@ class ServerAdminDb ():
             return False
     
     async def add_job_info (self, username, job):
-        await self.cursor.execute('insert into jobs values ("{}", "{}", "{}", {}, {}, "{}", "{}")'.format(job.info['id'], username, job.info['submission_time'], -1, -1, ','.join(job.info['annotators']), job.info['assembly']))
+        q = 'insert into jobs values ("{}", "{}", "{}", {}, {}, "{}", "{}")'.format(job.info['id'], username, job.info['submission_time'], -1, -1, ','.join(job.info['annotators']), job.info['assembly'])
+        await self.cursor.execute(q)
         await self.db.commit()
 
     async def check_username_presence (self, username):
@@ -265,6 +268,23 @@ class ServerAdminDb ():
         cursor = await self.db.cursor()
         await cursor.execute('update users set settings=? where email=?',[json.dumps(newsettings), username])
         cursor.close()
+
+    async def create_apilog_table_if_necessary (self):
+        cursor = await self.db.cursor()
+        q = 'select count(name) from sqlite_master where type="table" and name="apilog"'
+        await cursor.execute(q)
+        r = await cursor.fetchone()
+        if r[0] == 0:
+            q = 'create table apilog (writetime text, count int)'
+            await cursor.execute(q)
+            await self.db.commit()
+
+    async def write_single_api_access_count_to_db (self, t, count):
+        cursor = await self.db.cursor()
+        ts = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t))
+        q = f'insert into apilog values ("{ts}", {count})'
+        await cursor.execute(q)
+        await self.db.commit()
 
 async def update_last_active(request):
     session = await get_session(request)
