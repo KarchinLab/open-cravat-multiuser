@@ -13,7 +13,7 @@ function login () {
     var passwordSubmit = document.getElementById('login_password').value;
     $.ajax({
         url: '/server/login',
-        data: {'username':usernameSubmit, 'password':passwordSubmit},
+        headers: {'Authorization':`Basic ${btoa(usernameSubmit+':'+passwordSubmit)}`},
         success: function (response) {
             if (response == 'success') {
                 username = response['email'];

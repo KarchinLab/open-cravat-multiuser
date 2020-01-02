@@ -15,6 +15,7 @@ import datetime
 from collections import defaultdict
 import json
 import time
+from base64 import b64decode
 
 admindb = None
 
@@ -379,10 +380,18 @@ async def signup (request):
 
 async def login (request):
     global servermode
+    fail_string = 'fail'
     if servermode:
-        queries = request.rel_url.query
-        username = queries['username']
-        password = queries['password']
+        auth_header = request.headers.get('Authorization')
+        if auth_header is None:
+            return web.json_response(fail_string)
+        auth_toks = auth_header.split()
+        if auth_toks[0] != 'Basic' or len(auth_toks) < 2:
+            return web.json_response(fail_string)
+        credential_toks = b64decode(auth_toks[1]).decode().split(':')
+        if len(credential_toks) < 2:
+            return web.json_response(fail_string)
+        username, password = credential_toks
         m = hashlib.sha256()
         m.update(password.encode('utf-16be'))
         passwordhash = m.hexdigest()
@@ -393,12 +402,11 @@ async def login (request):
             sessionkey = get_session_key()
             session['sessionkey'] = sessionkey
             await admindb.add_sessionkey(username, sessionkey)
-            response = 'success'
+            return web.json_response('success')
         else:
-            response = 'fail'
+            return web.json_response(fail_string)
     else:
-        response = 'fail'
-    return web.json_response(response)
+        return web.json_response(fail_string)
 
 async def get_password_question (request):
     global servermode
