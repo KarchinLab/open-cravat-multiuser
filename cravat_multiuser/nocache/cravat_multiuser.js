@@ -1,7 +1,7 @@
 adminMode = false;
 
 function openSubmitPage (username) {
-    location.href = location.protocol + '//' + window.location.host + '/submit/index.html';
+    location.href = location.protocol + '//' + window.location.host + '/submit/nocache/index.html';
 }
 
 function openLoginPage () {
