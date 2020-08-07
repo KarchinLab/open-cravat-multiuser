@@ -15,7 +15,7 @@ for root, dirs, files in os.walk(os.path.join('cravat_multiuser', 'nocache')):
 
 setup(
     name='open-cravat-multiuser',
-    version='1.8.0',
+    version='2.0.2',
     description='OpenCRAVAT Multiuser Addon',
     long_description=readme(),
     author='Rick Kim, Kyle Moad, Mike Ryan, and Rachel Karchin',
@@ -25,7 +25,7 @@ setup(
     package_data={
         'cravat_multiuser': data_files,
     },
-    install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=1.6.0'],
+    install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=2.0.2'],
     packages=['cravat_multiuser'],
     python_requires='>=3.6',
 )

@@ -5,7 +5,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 import aiohttp_session
 import base64
 from cravat import admin_util as au
-import aiosqlite3
+import aiosqlite
 import sqlite3
 import asyncio
 import os
@@ -22,8 +22,8 @@ admindb = None
 class ServerAdminDb ():
     def __init__ (self):
         initdb = not os.path.exists(admindb_path)
-        db = sqlite3.connect(admindb_path)
-        cursor = db.cursor()
+        conn = sqlite3.connect(admindb_path)
+        cursor = conn.cursor()
         self.sessions = defaultdict(set)
         if initdb:    
             cursor.execute('create table users (email text, passwordhash text, question text, answerhash text, settings text)')
@@ -50,19 +50,28 @@ class ServerAdminDb ():
                     self.sessions[username] = set()
                 self.sessions[username].add(sessionkey)
         self.secret_key = base64.urlsafe_b64decode(fernet_key)
+        cursor.close()
+        conn.close()
+
+    async def get_db_conn (self):
+        if admindb_path is None:
+            return None
+        conn = await aiosqlite.connect(admindb_path)
+        return conn
 
     async def init (self):
-        self.db = await aiosqlite3.connect(admindb_path)
-        self.cursor = await self.db.cursor()
         await self.create_apilog_table_if_necessary()
 
     async def check_sessionkey (self, username, sessionkey):
         if username not in self.sessions or sessionkey not in self.sessions[username]:
             return False
         else:
-            cursor = await self.db.cursor()
+            conn = await self.get_db_conn()
+            cursor = await conn.cursor()
             await cursor.execute('select username from sessions where sessionkey = ?',[sessionkey])
             r = await cursor.fetchone()
+            await cursor.close()
+            await conn.close()
             if r and r[0] == username:
                 if sessionkey not in self.sessions[username]:
                     self.sessions[username].add(sessionkey)
@@ -71,65 +80,105 @@ class ServerAdminDb ():
                 return False
 
     async def add_sessionkey (self, username, sessionkey):
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         self.sessions[username].add(sessionkey)
-        await self.cursor.execute('insert into sessions (username, sessionkey) values (?, ?)',[username, sessionkey])
-        await self.db.commit()
+        await cursor.execute('insert into sessions (username, sessionkey) values (?, ?)',[username, sessionkey])
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
     
     async def remove_sessionkey(self, username, sessionkey):
         self.sessions[username].discard(sessionkey)
-        await self.cursor.execute('delete from sessions where username=? and sessionkey=?',[username, sessionkey])
-        await self.db.commit()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute('delete from sessions where username=? and sessionkey=?',[username, sessionkey])
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
 
     async def update_last_active(self, username, sessionkey):
-        await self.cursor.execute('update sessions set last_active = current_timestamp where username=? and sessionkey=?',[username, sessionkey])
-        await self.db.commit()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute('update sessions set last_active = current_timestamp where username=? and sessionkey=?',[username, sessionkey])
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
 
     async def clean_sessions(self, max_age):
         """
         Delete sessions older than a number of seconds.
         """
-        if hasattr(self, 'cursor'):
-            await self.cursor.execute(f'delete from sessions where last_active <= datetime(current_timestamp,"-{max_age} seconds")')
-            await self.db.commit()
+        conn = await self.get_db_conn()
+        if conn is not None:
+            cursor = await conn.cursor()
+            await cursor.execute(f'delete from sessions where last_active <= datetime(current_timestamp,"-{max_age} seconds")')
+            await conn.commit()
+            await cursor.close()
+        await conn.close()
 
     async def check_password (self, username, passwordhash):
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select * from users where email="{}" and passwordhash="{}"'.format(username, passwordhash)
-        await self.cursor.execute(q)
-        r = await self.cursor.fetchone()
+        await cursor.execute(q)
+        r = await cursor.fetchone()
+        await cursor.close()
+        await conn.close()
         if r is not None:
             return True
         else:
             return False
     
     async def add_job_info (self, username, job):
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'insert into jobs values ("{}", "{}", "{}", {}, {}, "{}", "{}")'.format(job.info['id'], username, job.info['submission_time'], -1, -1, ','.join(job.info['annotators']), job.info['assembly'])
-        await self.cursor.execute(q)
-        await self.db.commit()
+        await cursor.execute(q)
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
 
     async def check_username_presence (self, username):
-        await self.cursor.execute('select * from users where email="{}"'.format(username))
-        r = await self.cursor.fetchone()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute('select * from users where email="{}"'.format(username))
+        r = await cursor.fetchone()
+        await cursor.close()
+        await conn.close()
         if r is None:
             return False
         else:
             return True
 
     async def add_user (self, username, passwordhash, question, answerhash):
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         default_settings = {'lastAssembly':None}
-        await self.cursor.execute('insert into users values (?, ?, ?, ?, ?)',[username, passwordhash, question, answerhash, json.dumps(default_settings)])
-        await self.db.commit()
+        await cursor.execute('insert into users values (?, ?, ?, ?, ?)',[username, passwordhash, question, answerhash, json.dumps(default_settings)])
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
 
     async def get_password_question (self, email):
-        await self.cursor.execute('select question from users where email="{}"'.format(email))
-        r = await self.cursor.fetchone()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute('select question from users where email="{}"'.format(email))
+        r = await cursor.fetchone()
+        await cursor.close()
+        await conn.close()
         if r is None:
             return None
         else:
             return r[0]
 
     async def check_password_answer (self, email, answerhash):
-        await self.cursor.execute('select * from users where email="{}" and answerhash="{}"'.format(email, answerhash))
-        r = await self.cursor.fetchone()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute('select * from users where email="{}" and answerhash="{}"'.format(email, answerhash))
+        r = await cursor.fetchone()
+        await cursor.close()
+        await conn.close()
         if r is None:
             return False
         else:
@@ -140,17 +189,25 @@ class ServerAdminDb ():
         m = hashlib.sha256()
         m.update(temppassword.encode('utf-16be'))
         temppasswordhash = m.hexdigest()
-        await self.cursor.execute('update users set passwordhash="{}" where email="{}"'.format(temppasswordhash, email))
-        await self.db.commit()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute('update users set passwordhash="{}" where email="{}"'.format(temppasswordhash, email))
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
         return temppassword
 
     async def set_password (self, email, passwordhash):
-        await self.cursor.execute('update users set passwordhash="{}" where email="{}"'.format(passwordhash, email))
-        await self.db.commit()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute('update users set passwordhash="{}" where email="{}"'.format(passwordhash, email))
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
 
     async def get_input_stat (self, start_date, end_date):
-        db = await aiosqlite3.connect(admindb_path)
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select sum(numinput), max(numinput), avg(numinput) from jobs where submit>="{}" and submit<="{}T23:59:59" and numinput!=-1'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchall()
@@ -160,12 +217,12 @@ class ServerAdminDb ():
         a = row[2] if row[2] is not None else 0
         response = [s, m, a]
         await cursor.close()
-        await db.close()
+        await conn.close()
         return response
 
     async def get_user_stat (self, start_date, end_date):
-        db = await aiosqlite3.connect(admindb_path)
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select count(distinct username) from jobs where submit>="{}" and submit<="{}T23:59:59"'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchone()
@@ -189,12 +246,12 @@ class ServerAdminDb ():
             (heaviest_user, heaviest_user_num_input) = row
         response = {'num_uniq_user': num_unique_users, 'frequent':[frequent_user, frequent_user_num_jobs], 'heaviest':[heaviest_user, heaviest_user_num_input]}
         await cursor.close()
-        await db.close()
+        await conn.close()
         return response
 
     async def get_job_stat (self, start_date, end_date):
-        db = await aiosqlite3.connect(admindb_path)
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select count(*) from jobs where submit>="{}" and submit<="{}T23:59:59"'.format(start_date, end_date)
         await cursor.execute(q)
         row = await cursor.fetchone()
@@ -212,12 +269,12 @@ class ServerAdminDb ():
             counts.append(row[1])
         response = {'num_jobs': num_jobs, 'chartdata': [submits, counts]}
         await cursor.close()
-        await db.close()
+        await conn.close()
         return response
 
     async def get_annot_stat (self, start_date, end_date):
-        db = await aiosqlite3.connect(admindb_path)
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select annotators from jobs where submit>="{}" and submit<="{}T23:59:59"'.format(start_date, end_date)
         await cursor.execute(q)
         rows = await cursor.fetchall()
@@ -230,12 +287,12 @@ class ServerAdminDb ():
                 annot_count[annot] += 1
         response = {'annot_count': annot_count}
         await cursor.close()
-        await db.close()
+        await conn.close()
         return response
 
     async def get_assembly_stat (self, start_date, end_date):
-        db = await aiosqlite3.connect(admindb_path)
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select assembly, count(*) as c from jobs where submit>="{}" and submit<="{}T23:59:59" group by assembly order by c desc'.format(start_date, end_date)
         await cursor.execute(q)
         rows = await cursor.fetchall()
@@ -245,15 +302,17 @@ class ServerAdminDb ():
             assembly_count.append([assembly, count])
         response = assembly_count
         await cursor.close()
-        await db.close()
+        await conn.close()
         return response
 
     async def get_user_settings (self, username):
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select settings from users where email=?'
         await cursor.execute(q,[username])
         r = await cursor.fetchone()
-        cursor.close()
+        await cursor.close()
+        await conn.close()
         if r is None:
             return None
         else:
@@ -266,26 +325,34 @@ class ServerAdminDb ():
     async def update_user_settings (self, username, d):
         newsettings = await self.get_user_settings(username)
         newsettings.update(d)
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         await cursor.execute('update users set settings=? where email=?',[json.dumps(newsettings), username])
-        cursor.close()
+        await cursor.close()
+        await conn.close()
 
     async def create_apilog_table_if_necessary (self):
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         q = 'select count(name) from sqlite_master where type="table" and name="apilog"'
         await cursor.execute(q)
         r = await cursor.fetchone()
         if r[0] == 0:
             q = 'create table apilog (writetime text, count int)'
             await cursor.execute(q)
-            await self.db.commit()
+            await conn.commit()
+        await cursor.close()
+        await conn.close()
 
     async def write_single_api_access_count_to_db (self, t, count):
-        cursor = await self.db.cursor()
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
         ts = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t))
         q = f'insert into apilog values ("{ts}", {count})'
         await cursor.execute(q)
-        await self.db.commit()
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
 
 async def update_last_active(request):
     session = await get_session(request)
