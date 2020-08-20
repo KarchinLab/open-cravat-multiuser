@@ -272,6 +272,21 @@ class ServerAdminDb ():
         await conn.close()
         return response
 
+    async def get_api_stat (self, start_date, end_date):
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        q = f'select sum(count) from apilog where writetime>="{start_date}" and writetime<="{end_date}T23:59:59"'
+        await cursor.execute(q)
+        row = await cursor.fetchone()
+        if row is None:
+            num_api_access = 0
+        else:
+            num_api_access = row[0]
+        response = {'num_api_access': num_api_access}
+        await cursor.close()
+        await conn.close()
+        return response
+
     async def get_annot_stat (self, start_date, end_date):
         conn = await self.get_db_conn()
         cursor = await conn.cursor()
@@ -620,6 +635,19 @@ async def get_job_stat (request):
     response = await admindb.get_job_stat(start_date, end_date)
     return web.json_response(response)
 
+async def get_api_stat (request):
+    global servermode
+    if not servermode:
+        return web.json_response('no multiuser mode')
+    r = await is_admin_loggedin(request)
+    if r == False:
+        return web.json_response('no admin')
+    queries = request.rel_url.query
+    start_date = queries['start_date']
+    end_date = queries['end_date']
+    response = await admindb.get_api_stat(start_date, end_date)
+    return web.json_response(response)
+
 async def get_annot_stat (request):
     global servermode
     if not servermode:
@@ -697,6 +725,7 @@ def add_routes (router):
     router.add_route('GET', '/server/inputstat', get_input_stat)
     router.add_route('GET', '/server/userstat', get_user_stat)
     router.add_route('GET', '/server/jobstat', get_job_stat)
+    router.add_route('GET', '/server/apistat', get_api_stat)
     router.add_route('GET', '/server/annotstat', get_annot_stat)
     router.add_route('GET', '/server/assemblystat', get_assembly_stat)
     router.add_route('GET', '/server/restart', restart)
