@@ -25,7 +25,11 @@ setup(
     package_data={
         'cravat_multiuser': data_files,
     },
-    install_requires=['aiohttp_session', 'cryptography', 'open-cravat>=2.0.2'],
+    install_requires=[
+        'aiohttp_session', 
+        'cryptography', 
+        'open-cravat>=2.0.2'
+    ],
     packages=['cravat_multiuser'],
     python_requires='>=3.6',
 )
