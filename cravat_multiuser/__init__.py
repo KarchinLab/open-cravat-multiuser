@@ -16,6 +16,7 @@ from collections import defaultdict
 import json
 import time
 from base64 import b64decode
+import random
 
 admindb = None
 
@@ -185,7 +186,7 @@ class ServerAdminDb ():
             return True
 
     async def set_temp_password (self, email):
-        temppassword = 'temp_password'
+        temppassword = ''.join([chr(random.randint(97,122)) for v in range(8)])
         m = hashlib.sha256()
         m.update(temppassword.encode('utf-16be'))
         temppasswordhash = m.hexdigest()
