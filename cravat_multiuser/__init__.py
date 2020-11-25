@@ -33,13 +33,13 @@ class ServerAdminDb ():
             m.update(adminpassword.encode('utf-16be'))
             adminpasswordhash = m.hexdigest()
             cursor.execute('insert into users values ("admin", "{}", "", "", null)'.format(adminpasswordhash))
-            db.commit()
+            conn.commit()
             cursor.execute('create table jobs (jobid text, username text, submit date, runtime integer, numinput integer, annotators text, assembly text)')
             cursor.execute('create table config (key text, value text)')
             fernet_key = fernet.Fernet.generate_key()
             cursor.execute('insert into config (key, value) values ("fernet_key",?)',[fernet_key])
             cursor.execute('create table sessions (username text, sessionkey text, last_active text default current_timestamp, primary key (username, sessionkey))')
-            db.commit()
+            conn.commit()
         else:
             cursor.execute('select value from config where key="fernet_key"')
             fernet_key = cursor.fetchone()[0]
