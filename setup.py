@@ -15,7 +15,7 @@ for root, dirs, files in os.walk(os.path.join('cravat_multiuser', 'nocache')):
 
 setup(
     name='open-cravat-multiuser',
-    version='2.0.2',
+    version='2.1.3',
     description='OpenCRAVAT Multiuser Addon',
     long_description=readme(),
     author='Rick Kim, Kyle Moad, Mike Ryan, and Rachel Karchin',
