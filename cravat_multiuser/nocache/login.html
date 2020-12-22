@@ -20,49 +20,53 @@
 <body>
 
 <div id='loginsignupdialog'>
-    <img src='/submit/logo.png' />
-    <div id='logindiv' style='display: block;'>
-        <div style='font-size: 16px;'>Log in to use OpenCRAVAT Server</div>
-        <table><tbody><tr>
-        <td>Email</td><td><input type='text' id='login_username' /></td></tr>
-        <tr><td>Password</td><td><input type='password' id='login_password' /></td></tr>
-        </tbody></table>
-        <button id='login_button' onclick='login();'>Login</button>
-        <br />
-        <span style='text-decoration: underline; color: #4d4d4d; cursor: default;' onclick='forgotPassword();'>Forgot password?</span>
-        <br />
-        <span style='text-decoration: underline; color: #4d4d4d; cursor: default;' onclick='showSignupDiv();'>Sign up</span>
-        <br />
-        <a href='https://github.com/KarchinLab/open-cravat/wiki' target='_blank'>New to OpenCRAVAT?</a>
-    </div>
-    <div id='forgotpassworddiv' style='display: none;'>
-        <div id='forgotpasswordgetquestiondiv'>
-            <table><tbody>
-            <tr><td>Email</td><td><input type='text' id='forgotpasswordemail' /></td></tr>
-            </tbody></table>
-            <button id='forgotpasswordgetquestionbutton' onclick='getPasswordQuestion();'>Get password question</button>
+    <div id='wrapdiv'>
+        <img src='/server/nocache/logo.png' style='position: absolute; top: -52px;'/>
+        Member Login<br />OpenCRAVAT<br />
+        <div id='logindiv'>
+            <input type='text' id='login_username' placeholder='Email' />
             <br />
-            <span style='text-decoration: underline; color: #4d4d4d; cursor: default;' onclick='showLoginDiv();'>Back to Login</span>
+            <input type='password' id='login_password' placeholder='Password' />
+            <br />
+            <button id='login_button' onclick='login();' >Login</button>
+            <br />
+            <span style='cursor: pointer; font-size: 12px;' onclick='forgotPassword();'>Forgot password?</span>
+            <br />
+            <span style='cursor: pointer; font-size: 23px;' onclick='showSignupDiv();'>Sign up</span>
+            <br />
+            <a href='https://github.com/KarchinLab/open-cravat/wiki' target='_blank' style='font-size: 11px; color: white; text-decoration: none; cursor: pointer;'>Help</a>
         </div>
-        <div id='forgotpasswordquestionanswerdiv'>
-            Question: <span id='forgotpasswordquestion'></span>
-            <br />
-            Answer: <input type='text' id='forgotpasswordanswer' />
+        <div id='forgotpassworddiv' style='display: none; margin-top: 15px;'>
+            <div id='forgotpasswordgetquestiondiv'>
+                <input type='text' id='forgotpasswordemail' placeholder='Email' />
+                <button id='forgotpasswordgetquestionbutton' onclick='getPasswordQuestion();'>Get password question</button>
+                <br />
+                <span style='cursor: pointer; font-size: 22px;' onclick='showLoginDiv();'>&#x21e6;</span>
+            </div>
+            <div id='forgotpasswordquestionanswerdiv' style='font-weight: normal;' >
+                <div style='font-size: 16px;'>
+                    Question: <span id='forgotpasswordquestion'></span>
+                </div>
+                <input type='text' id='forgotpasswordanswer' placeholder='Answer' />
             <br />
             <button id='forgotpasswordsubmitbutton' onclick='submitForgotPasswordAnswer();'>Submit</button>
+            </div>
         </div>
-    </div>
-    <div id='signupdiv' style='display: none;'>
-        <table><tbody>
-        <tr><td>Email</td><td><input type='text' id='signupemail' /></td></tr>
-        <tr><td>Password</td><td><input type='password' id='signuppassword' /></td></tr>
-        <tr><td>Re-type password</td><td><input type='password' id='signupretypepassword' /></td></tr>
-        <tr><td>Question</td><td><input type='text' id='signupquestion' /></td></tr>
-        <tr><td>Answer</td><td><input type='text' id='signupanswer' /></td></tr>
-        </tbody></table>
-        <button id='signupbutton' onclick='signupSubmit();'>Create account</button>
-        <br />
-        <span style='text-decoration: underline; color: #4d4d4d; cursor: default;' onclick='showLoginDiv();'>Back to Login</span>
+        <div id='signupdiv' style='display: none;'>
+            <input type='text' id='signupemail' placeholder='Email' />
+            <br />
+            <input type='password' id='signuppassword' placeholder='Password' />
+            <br />
+            <input type='password' id='signupretypepassword' placeholder='Repeat password' />
+            <br />
+            <input type='text' id='signupquestion' placeholder='Password retrieval question' />
+            <br />
+            <input type='text' id='signupanswer' placeholder='Password retrieval answer' />
+            <br />
+            <button id='signupbutton' onclick='signupSubmit();'>Create account</button>
+            <br />
+            <span style='cursor: pointer; font-size: 22px;' onclick='showLoginDiv();'>&#x21e6;</span>
+        </div>
     </div>
 </div>
  

@@ -47,7 +47,7 @@ function getPasswordQuestion () {
             } else {
                 document.getElementById('forgotpasswordgetquestiondiv').style.display = 'none';
                 document.getElementById('forgotpasswordquestion').textContent = msg;
-                document.getElementById('forgotpasswordquestionanswerdiv').style.display = 'inline-block';
+                document.getElementById('forgotpasswordquestionanswerdiv').style.display = 'block';
             }
         }
     });

@@ -1,5 +1,5 @@
 #loginsignupdialog {
-    position: absolute;
+    position: fixed;
     background-color: #ffffff;
     left: 0px;
     top: 0px;
@@ -23,48 +23,37 @@
     transform: translateX(-50%);
 }
 
-#logindiv {
+#wrapdiv {
+    display: block; 
+    background-color: #3c5788; 
+    border-radius: 17px; 
+    padding-top: 75px; 
+    padding-bottom: 10px; 
+    padding-left: 50px; 
+    padding-right: 50px; 
+    width: 260px; 
+    font-size: 23px; 
+    color: white; 
+    font-weight: bold;
     position: absolute;
-    left: 50%;
-    top: 50%;
-    font-size: 18px;
-    line-height: 33px;
+    top: calc(50% - 200px);
+    left: calc(50% - 180px);
     text-align: center;
-    transform: translate(-50%, -50%);
-    color: black;
 }
 
-#logindiv table tbody tr td:first-child {
-    text-align: right;
+#wrapdiv input {
+    width: 100%; 
+    border-style: none; 
+    height: 30px; 
+    margin-top: 12px;
 }
 
-#forgotpassworddiv {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    font-size: 18px;
-    line-height: 33px;
-    text-align: center;
-    transform: translate(-50%, -50%);
-    color: black;
-}
-
-#signupdiv {
-    position: absolute;
-    left: calc(50% - 150px);
-    top: calc(50% - 125px);
-    font-size: 18px;
-    line-height: 33px;
-    text-align: center;
-    color: black;
-}
-
-#signupdiv table tbody tr td:first-child {
-    text-align: right;
-}
-
-#forgotpasswordgetquestiondiv {
-    text-align: center;
+#wrapdiv button {
+    width: 100%; 
+    border-style: none; 
+    height: 30px; 
+    margin-top: 12px; 
+    background-color: #a3e3ff;
 }
 
 #changepassworddiv {
