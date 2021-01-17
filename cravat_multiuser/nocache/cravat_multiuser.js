@@ -1,6 +1,6 @@
 adminMode = false;
 
-function openSubmitPage (username) {
+function openSubmitPage () {
     location.href = location.protocol + '//' + window.location.host + '/submit/nocache/index.html';
 }
 
@@ -15,9 +15,24 @@ function login () {
         url: '/server/login',
         headers: {'Authorization':`Basic ${btoa(usernameSubmit+':'+passwordSubmit)}`},
         success: function (response) {
-            if (response == 'success') {
+            if (response.startsWith('guestsuccess_')) {
+                var noRemDays = response.split('_')[1];
+                var div = getEl('div');
+                var sdiv = getEl('div');
+                sdiv.textContent = 'You are logging with a guest account.';
+                addEl(div, sdiv);
+                addEl(div, getEl('br'));
+                var sdiv = getEl('div');
+                sdiv.textContent = 'This guest account will be deleted in ' + noRemDays + ' days.';
+                addEl(div, sdiv);
+                addEl(div, getEl('br'));
+                var sdiv = getEl('div');
+                sdiv.textContent = 'To keep using this account, please change the username to your email.';
+                addEl(div, sdiv);
+                msgAccountDiv(div, openSubmitPage);
+            } else if (response == 'success') {
                 username = response['email'];
-                openSubmitPage(username);
+                openSubmitPage();
             } else if (response == 'fail') {
                 msgAccountDiv('Login failed');
             }
@@ -107,21 +122,46 @@ function changePassword () {
 }
 
 function submitNewPassword () {
+    var newemail = document.getElementById('changepasswordnewemail').value;
     var oldpassword = document.getElementById('changepasswordoldpassword').value;
     var newpassword = document.getElementById('changepasswordnewpassword').value;
     var retypenewpassword = document.getElementById('changepasswordretypenewpassword').value;
-    if (newpassword != retypenewpassword) {
+    var emailRegex = RegExp(/^\S+@\S+\.\S+$/);
+    if (newemail == '' && newpassword == '') {
+        msgAccountDiv('Nothing to change');
+        return;
+    }
+    if (newemail != '' && emailRegex.test(newemail) == false) {
+        msgAccountDiv('Invalid username. Please use your email address.');
+        return;
+    }
+    if (newpassword != '' && newpassword != retypenewpassword) {
         msgAccountDiv('New password mismatch');
         return;
     }
     $.ajax({
         url: '/server/changepassword',
-        data: {'oldpassword': oldpassword,
-               'newpassword': newpassword},
+        data: {
+            'newemail': newemail,
+            'oldpassword': oldpassword,
+            'newpassword': newpassword
+        },
         success: function (response) {
             if (response == 'success') {
-                msgAccountDiv('Password changed successfully.');
                 document.getElementById('changepassworddiv').style.display = 'none';
+                var div = getEl('div');
+                if (newemail != '') {
+                    document.querySelector('#userdiv').textContent = newemail;
+                    var sdiv = getEl('div');
+                    sdiv.textContent = 'Username changed successfully';
+                    addEl(div, sdiv);
+                }
+                if (newpassword != '') {
+                    var sdiv = getEl('div');
+                    sdiv.textContent = 'Password changed successfully';
+                    addEl(div, sdiv);
+                }
+                msgAccountDiv(div);
             } else {
                 msgAccountDiv(response);
             }
@@ -148,6 +188,58 @@ function toggleloginsignupdiv () {
 
 function closeLoginSignupDialog (evt) {
     document.getElementById("loginsignupdialog").style.display="none";
+}
+
+function tryAsGuest () {
+    var d = new Date();
+    var dateStr = '' + d.getFullYear() + (d.getMonth() + 1).toString().padStart(2, '0') + d.getDate().toString().padStart(2, '0');
+    var username = 'guest_' + (Math.random()*10000000000000000).toString(36) + '_' + dateStr;
+    var password = (Math.random()*10000000000000000).toString(36);
+    var retypepassword = password;
+    var question = 'Type 0 as answer';
+    var answer = '0';
+    if (username == '' || password == '' || retypepassword == '' || question == '' || answer == '') {
+        msgAccountDiv('Fill all the blanks.');
+        return;
+    }
+    if (password != retypepassword) {
+        msgAccountDiv('Password mismatch');
+        return;
+    }
+    $.ajax({
+        url: '/server/signup',
+        data: {'username': username, 'password': password, 'question': question, 'answer': answer},
+        success: function (response) {
+            if (response == 'already registered') {
+                msgAccountDiv('Something went wrong. Please click the try as guest button again.');
+            } else if (response == 'success') {
+                document.getElementById('login_username').value = username;
+                document.getElementById('login_password').value = password;
+                var div = getEl('div');
+                var sdiv = getEl('div');
+                sdiv.textContent = 'SUCCESS!';
+                addEl(div, sdiv);
+                addEl(div, getEl('br'));
+                var sdiv = getEl('div');
+                sdiv.textContent = 'Temporary account has been created for you to try OpenCRAVAT.';
+                addEl(div, sdiv);
+                addEl(div, getEl('br'));
+                var sdiv = getEl('div');
+                sdiv.textContent = 'Username is ' + username;
+                addEl(div, sdiv);
+                var sdiv = getEl('div');
+                sdiv.textContent = 'Password is ' + password;
+                addEl(div, sdiv);
+                addEl(div, getEl('br'));
+                var sdiv = getEl('div');
+                sdiv.textContent = 'Click OK to continue.';
+                addEl(div, sdiv);
+                msgAccountDiv(div, login);
+            } else if (response == 'fail') {
+                msgAccountDiv('Signup failed');
+            }
+        }
+    });
 }
 
 function signupSubmit () {
@@ -656,7 +748,11 @@ function populateAssemblyStatDiv () {
 
 function msgAccountDiv (msg, callback) {
     var div = getEl('div');
-    div.textContent = msg;
+    if (typeof msg == 'string') {
+        div.textContent = msg;
+    } else if (typeof msg == 'object') {
+        addEl(div, msg);
+    }
     showYesNoDialog(div, callback, false, true);
 }
 
@@ -690,11 +786,19 @@ function addAccountDiv (username) {
     var sdiv = getEl('div');
     sdiv.id = 'changepassworddiv';
     var span = getEl('span');
-    span.textContent = 'Old password: ';
+    span.textContent = 'Current password: ';
     addEl(sdiv, span);
     var input = getEl('input');
     input.type = 'password';
     input.id = 'changepasswordoldpassword';
+    addEl(sdiv, input);
+    addEl(sdiv, getEl('br'));
+    var span = getEl('span');
+    span.textContent = 'New email: ';
+    addEl(sdiv, span);
+    var input = getEl('input');
+    input.type = 'text';
+    input.id = 'changepasswordnewemail';
     addEl(sdiv, input);
     addEl(sdiv, getEl('br'));
     var span = getEl('span');

@@ -198,6 +198,23 @@ class ServerAdminDb ():
         await conn.close()
         return temppassword
 
+    async def set_username (self, email, newemail):
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        await cursor.execute(f'select * from users where email="{newemail}"')
+        r = await cursor.fetchone()
+        if r is not None:
+            await cursor.close()
+            await conn.close()
+            return 'Duplicate username'
+        cursor = await conn.cursor()
+        q = f'update users set email="{newemail}" where email="{email}"'
+        await cursor.execute(q)
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
+        return ''
+
     async def set_password (self, email, passwordhash):
         conn = await self.get_db_conn()
         cursor = await conn.cursor()
@@ -347,6 +364,17 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
+    async def delete_user (self, username):
+        conn = await self.get_db_conn()
+        cursor = await conn.cursor()
+        q = f'delete from users where email="{username}"'
+        await cursor.execute(q)
+        q = f'delete from sessions where username="{username}"'
+        await cursor.execute(q)
+        await conn.commit()
+        await cursor.close()
+        await conn.close()
+
     async def create_apilog_table_if_necessary (self):
         conn = await self.get_db_conn()
         cursor = await conn.cursor()
@@ -475,6 +503,24 @@ async def login (request):
         if len(credential_toks) < 2:
             return web.json_response(fail_string)
         username, password = credential_toks
+        if username.startswith('guest_'):
+            guest_login = True
+            datestr = username.split('_')[2]
+            creation_date = datetime.datetime(
+                int(datestr[:4]), 
+                int(datestr[4:6]), 
+                int(datestr[6:8]))
+            current_date = datetime.datetime.now()
+            days_passed = (current_date - creation_date).days
+            global system_conf
+            guest_lifetime = system_conf.get('guest_lifetime', 7)
+            if days_passed > guest_lifetime:
+                await admindb.delete_user(username)
+                return web.json_response(fail_string)
+            else:
+                days_rem = guest_lifetime - days_passed
+        else:
+            guest_login = False
         m = hashlib.sha256()
         m.update(password.encode('utf-16be'))
         passwordhash = m.hexdigest()
@@ -485,7 +531,10 @@ async def login (request):
             sessionkey = get_session_key()
             session['sessionkey'] = sessionkey
             await admindb.add_sessionkey(username, sessionkey)
-            return web.json_response('success')
+            if guest_login:
+                return web.json_response('guestsuccess_' + str(days_rem))
+            else:
+                return web.json_response('success')
         else:
             return web.json_response(fail_string)
     else:
@@ -534,6 +583,7 @@ async def change_password (request):
     global servermode
     if servermode:
         queries = request.rel_url.query
+        newemail = queries['newemail']
         oldpassword = queries['oldpassword']
         newpassword = queries['newpassword']
         r = await is_loggedin(request)
@@ -552,10 +602,17 @@ async def change_password (request):
         if r == False:
             response = 'User authentication failed.'
         else:
-            m = hashlib.sha256()
-            m.update(newpassword.encode('utf-16be'))
-            newpasswordhash = m.hexdigest()
-            await admindb.set_password(username, newpasswordhash)
+            if newemail != '':
+                r = await admindb.set_username(username, newemail)
+                if r != '':
+                    return web.json_response(r)
+                else:
+                    username = newemail
+            if newpassword != '':
+                m = hashlib.sha256()
+                m.update(newpassword.encode('utf-16be'))
+                newpasswordhash = m.hexdigest()
+                await admindb.set_password(username, newpasswordhash)
             response = 'success'
     else:
         response = 'no multiuser mode'
@@ -714,6 +771,8 @@ async def setup_module ():
     global admindb
     admindb = ServerAdminDb()
     await admindb.init()
+
+system_conf = au.get_system_conf()
 
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
