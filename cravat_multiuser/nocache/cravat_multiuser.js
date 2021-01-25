@@ -1,4 +1,5 @@
 adminMode = false;
+noRemDays = null;
 
 function openSubmitPage () {
     location.href = location.protocol + '//' + window.location.host + '/submit/nocache/index.html';
@@ -16,6 +17,7 @@ function login () {
         headers: {'Authorization':`Basic ${btoa(usernameSubmit+':'+passwordSubmit)}`},
         success: function (response) {
             if (response.startsWith('guestsuccess_')) {
+                /*
                 var noRemDays = response.split('_')[1];
                 var div = getEl('div');
                 var sdiv = getEl('div');
@@ -30,6 +32,8 @@ function login () {
                 sdiv.textContent = 'To keep using this account, please change the username to your email.';
                 addEl(div, sdiv);
                 msgAccountDiv(div, openSubmitPage);
+                */
+                openSubmitPage();
             } else if (response == 'success') {
                 username = response['email'];
                 openSubmitPage();
@@ -113,10 +117,10 @@ function forgotPassword () {
 function changePassword () {
     var div = document.getElementById('changepassworddiv');
     var display = div.style.display;
-    if (display == 'block') {
+    if (display == 'flex') {
         display = 'none';
     } else {
-        display = 'block';
+        display = 'flex';
     }
     div.style.display = display;
 }
@@ -155,13 +159,25 @@ function submitNewPassword () {
                     var sdiv = getEl('div');
                     sdiv.textContent = 'Username changed successfully';
                     addEl(div, sdiv);
+                    addEl(div, getEl('br'));
                 }
                 if (newpassword != '') {
                     var sdiv = getEl('div');
                     sdiv.textContent = 'Password changed successfully';
                     addEl(div, sdiv);
+                    addEl(div, getEl('br'));
                 }
-                msgAccountDiv(div);
+                if (newemail != '') {
+                    var sdiv = getEl('div');
+                    sdiv.textContent = 'Logging out since the user name has been changed.';
+                    addEl(div, sdiv);
+                    var sdiv = getEl('div');
+                    sdiv.textContent = 'Log in with the new user name.';
+                    addEl(div, sdiv);
+                    msgAccountDiv(div, logout);
+                } else {
+                    msgAccountDiv(div);
+                }
             } else {
                 msgAccountDiv(response);
             }
@@ -192,7 +208,8 @@ function closeLoginSignupDialog (evt) {
 
 function tryAsGuest () {
     var d = new Date();
-    var dateStr = '' + d.getFullYear() + (d.getMonth() + 1).toString().padStart(2, '0') + d.getDate().toString().padStart(2, '0');
+    var dateStr = '' + d.getFullYear() + (d.getMonth() + 1).toString().padStart(2, '0') 
+            + d.getDate().toString().padStart(2, '0');
     var username = 'guest_' + (Math.random()*10000000000000000).toString(36) + '_' + dateStr;
     var password = (Math.random()*10000000000000000).toString(36);
     var retypepassword = password;
@@ -215,6 +232,7 @@ function tryAsGuest () {
             } else if (response == 'success') {
                 document.getElementById('login_username').value = username;
                 document.getElementById('login_password').value = password;
+                /*
                 var div = getEl('div');
                 var sdiv = getEl('div');
                 sdiv.textContent = 'SUCCESS!';
@@ -235,6 +253,8 @@ function tryAsGuest () {
                 sdiv.textContent = 'Click OK to continue.';
                 addEl(div, sdiv);
                 msgAccountDiv(div, login);
+                */
+                login();
             } else if (response == 'fail') {
                 msgAccountDiv('Signup failed');
             }
@@ -281,6 +301,7 @@ function checkLogged (inUsername) {
             logged = response['logged'];
             if (logged == true) {
                 username = response['email'];
+                noRemDays = response['days_rem'];
                 doAfterLogin(username);
             } else {
                 showUnloggedControl();
@@ -756,7 +777,19 @@ function msgAccountDiv (msg, callback) {
     showYesNoDialog(div, callback, false, true);
 }
 
+function isGuestAccount (username) {
+    if (username.startsWith('guest_') && username.indexOf('@') == -1) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 function addAccountDiv (username) {
+    var div = document.querySelector('#accountdiv');
+    if (div != null) {
+        div.remove();
+    }
     var div = getEl('div');
     div.id = 'accountdiv';
     var userDiv = getEl('span');
@@ -827,6 +860,60 @@ function addAccountDiv (username) {
     addEl(div, sdiv);
     var headerDiv = document.querySelector('.headerdiv');
     addEl(headerDiv, div);
+    if (isGuestAccount(username)) {
+        document.querySelector('#changepassworddiv input:nth-child(2)').style.display = 'none';
+        document.querySelector('#changepassworddiv span:first-child').style.display = 'none';
+        var sdiv = getEl('div');
+        sdiv.id = 'guest_warn_div';
+        var span = getEl('span');
+        span.textContent = 'This guest account will be deleted after ' + noRemDays + (noRemDays > 1? ' days': ' day') + '. To keep your jobs, click the change account information icon to the right of user name and enter your email address and a new password.';
+        addEl(sdiv, span);
+        addEl(div, sdiv);
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.style.marginRight = '0.2rem';
+        svg.addEventListener('mouseover', function (evt) {
+            document.querySelector('#guest_warn_div').style.display = 'flex';
+        });
+        svg.addEventListener('mouseout', function (evt) {
+            document.querySelector('#guest_warn_div').style.display = 'none';
+        });
+        svg.setAttribute('version', '1.1');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('width', '24');
+        svg.setAttribute('height', '24');
+        var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', '50');
+        c.setAttribute('cy', '50');
+        c.setAttribute('r', '50');
+        c.setAttribute('fill', '#ff0000');
+        addEl(svg, c);
+        var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', '50');
+        c.setAttribute('cy', '80');
+        c.setAttribute('r', '10');
+        c.setAttribute('fill', '#ffffff');
+        addEl(svg, c);
+        var c = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        c.setAttribute('d', 'M38,24 A12,12,0,0,1,62,24 L56,62 A8,8,0,0,1,44,62');
+        c.setAttribute('fill', '#ffffff');
+        addEl(svg, c);
+        div.prepend(svg);
+        //var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        //path.setAttribute('d', 'M0,0 Lee
+        /*
+        var sdiv = getEl('div');
+        sdiv.textContent = 'You are logging with a guest account.';
+        addEl(div, sdiv);
+        addEl(div, getEl('br'));
+        var sdiv = getEl('div');
+        sdiv.textContent = 'This guest account will be deleted in ' + noRemDays + ' days.';
+        addEl(div, sdiv);
+        addEl(div, getEl('br'));
+        var sdiv = getEl('div');
+        sdiv.textContent = 'To keep using this account, please change the username to your email.';
+        addEl(div, sdiv);
+        */
+    }
 }
 
 function exportContentAdminPanel (tabName) {

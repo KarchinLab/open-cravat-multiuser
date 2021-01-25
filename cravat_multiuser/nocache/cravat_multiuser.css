@@ -58,7 +58,10 @@
 
 #changepassworddiv {
     display: none;
+    flex-direction: column;
     position: absolute;
+    top: 2rem;
+    right: 3rem;
     padding: 10px;
     background-color: white;
     border: 1px solid black;
@@ -87,6 +90,8 @@
     position: absolute;
     right: 96px;
     top: 4px;
+    display: flex;
+    align-items: center;
 }
 
 #accountdiv span {
@@ -135,3 +140,20 @@ body * {
     z-index: 202;
 }
 
+#guest_warn_div {
+    display: none;
+    position: absolute;
+    top: 2rem;
+    left: 0;
+    background-color: white;
+    padding: 1rem;
+    box-shadow: 0.5rem 0.5rem 0.5rem gray;
+    border: 1px solid gray;
+}
+
+.disabled {
+    color: gray;
+    pointer-events: none;
+    background-color: #dadada;
+    border: 0px;
+}

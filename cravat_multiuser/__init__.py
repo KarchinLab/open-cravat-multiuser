@@ -210,9 +210,15 @@ class ServerAdminDb ():
         cursor = await conn.cursor()
         q = f'update users set email="{newemail}" where email="{email}"'
         await cursor.execute(q)
+        q = f'update jobs set username="{newemail}" where username="{email}"'
+        await cursor.execute(q)
         await conn.commit()
         await cursor.close()
         await conn.close()
+        root_jobs_dir = au.get_jobs_dir()
+        old_job_dir = os.path.join(root_jobs_dir, email)
+        new_job_dir = os.path.join(root_jobs_dir, newemail)
+        os.rename(old_job_dir, new_job_dir)
         return ''
 
     async def set_password (self, email, passwordhash):
@@ -598,7 +604,10 @@ async def change_password (request):
         m = hashlib.sha256()
         m.update(oldpassword.encode('utf-16be'))
         oldpasswordhash = m.hexdigest()
-        r = await admindb.check_password(username, oldpasswordhash)
+        if username.startswith('guest_') == False and '@' not in username:
+            r = await admindb.check_password(username, oldpasswordhash)
+        else:
+            r = True
         if r == False:
             response = 'User authentication failed.'
         else:
@@ -628,6 +637,7 @@ async def check_logged (request):
         if not 'username' in session:
             logged = False
             email = ''
+            day_rem = -1
         else:
             username = session['username']
             r = await is_loggedin(request)
@@ -637,7 +647,20 @@ async def check_logged (request):
             else:
                 logged = False
                 email = ''
-        response = {'logged': logged, 'email': email}
+            if username.startswith('guest_'):
+                datestr = username.split('_')[2]
+                creation_date = datetime.datetime(
+                    int(datestr[:4]), 
+                    int(datestr[4:6]), 
+                    int(datestr[6:8]))
+                current_date = datetime.datetime.now()
+                days_passed = (current_date - creation_date).days
+                global system_conf
+                guest_lifetime = system_conf.get('guest_lifetime', 7)
+                days_rem = guest_lifetime - days_passed
+            else:
+                days_rem = -1
+        response = {'logged': logged, 'email': email, 'days_rem': days_rem}
     else:
         response = 'no multiuser mode'
     return web.json_response(response)
