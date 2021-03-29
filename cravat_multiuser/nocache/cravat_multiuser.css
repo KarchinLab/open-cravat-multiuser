@@ -1,5 +1,5 @@
 #loginsignupdialog {
-    position: fixed;
+    /*position: fixed;
     background-color: #ffffff;
     left: 0px;
     top: 0px;
@@ -8,14 +8,16 @@
     font-size: 13px;
     margin: 0px;
     padding: 0px;
-    z-index: 201;
+    z-index: 201;*/
+    flex-grow: 1;
+    background-image: url('oc.png');
 }
 
-#loginsignupdialog button {
+#wrapdiv button {
     font-size: 16px;
 }
 
-#loginsignupdialog img {
+#wrapdiv img {
     width: 130px;
     position: fixed;
     top: 50px;
@@ -27,10 +29,7 @@
     display: block; 
     background-color: #3c5788; 
     border-radius: 17px; 
-    padding-top: 75px; 
-    padding-bottom: 10px; 
-    padding-left: 50px; 
-    padding-right: 50px; 
+    padding: 3rem;
     width: 260px; 
     font-size: 23px; 
     color: white; 
@@ -156,4 +155,49 @@ body * {
     pointer-events: none;
     background-color: #dadada;
     border: 0px;
+}
+
+#sidenav {
+  display: flex;
+  flex-direction: column;
+  width: 12rem;
+  background-color: #3c5788;
+  color: white;
+  overflow: auto;
+  align-items: center;
+  padding-top: 2rem;
+}
+
+#sidenav ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+#sidenav ul li {
+  padding-top: 2rem;
+}
+
+#sidenav a {
+  color: white;
+  text-decoration: none;
+}
+
+#container {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh;
+}
+
+body {
+  margin: 0;
+}
+
+#logindiv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
 }
