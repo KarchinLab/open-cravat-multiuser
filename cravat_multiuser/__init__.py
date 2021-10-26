@@ -637,7 +637,7 @@ async def check_logged (request):
         if not 'username' in session:
             logged = False
             email = ''
-            day_rem = -1
+            days_rem = -1
         else:
             username = session['username']
             r = await is_loggedin(request)
