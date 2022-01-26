@@ -467,32 +467,36 @@ def create_user_dir_if_not_exist (username):
 
 async def signup (request):
     global servermode
+    global noguest
     if servermode:
         queries = request.rel_url.query
         username = queries['username']
-        password = queries['password']
-        m = hashlib.sha256()
-        m.update(password.encode('utf-16be'))
-        passwordhash = m.hexdigest()
-        question = queries['question']
-        answer = queries['answer']
-        m = hashlib.sha256()
-        m.update(answer.encode('utf-16be'))
-        answerhash = m.hexdigest()
-        r = await admindb.check_username_presence(username)
-        if r == True:
-            response = 'already registered'
+        if noguest and username.startswith('guest_'):
+            response = 'No guest account is allowed.'
         else:
-            await admindb.add_user(username, passwordhash, question, answerhash)
-            session = await get_session(request)
-            create_user_dir_if_not_exist(username)
-            sessionkey = get_session_key()
-            session['username'] = username
-            session['sessionkey'] = sessionkey
-            await admindb.add_sessionkey(username, sessionkey)
-            response = 'success'
+            password = queries['password']
+            m = hashlib.sha256()
+            m.update(password.encode('utf-16be'))
+            passwordhash = m.hexdigest()
+            question = queries['question']
+            answer = queries['answer']
+            m = hashlib.sha256()
+            m.update(answer.encode('utf-16be'))
+            answerhash = m.hexdigest()
+            r = await admindb.check_username_presence(username)
+            if r == True:
+                response = 'Already registered'
+            else:
+                await admindb.add_user(username, passwordhash, question, answerhash)
+                session = await get_session(request)
+                create_user_dir_if_not_exist(username)
+                sessionkey = get_session_key()
+                session['username'] = username
+                session['sessionkey'] = sessionkey
+                await admindb.add_sessionkey(username, sessionkey)
+                response = 'Signup successful'
     else:
-        response = 'fail'
+        response = 'Signup failed'
     return web.json_response(response)
 
 async def login (request):
@@ -795,6 +799,10 @@ async def setup_module ():
     admindb = ServerAdminDb()
     await admindb.init()
 
+async def get_noguest(request):
+    global noguest
+    return web.json_response(noguest)
+
 system_conf = au.get_system_conf()
 
 def add_routes (router):
@@ -814,5 +822,6 @@ def add_routes (router):
     router.add_route('GET', '/server/restart', restart)
     router.add_route('GET', '/server/usersettings', get_user_settings)
     router.add_route('GET', '/server/nocache/login.html', show_login_page)
+    router.add_route('GET', '/server/noguest', get_noguest)
     router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 
