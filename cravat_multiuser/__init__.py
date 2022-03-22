@@ -437,7 +437,6 @@ async def is_loggedin (request):
     return response
 
 async def try_remote_user_login (request):
-    enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
     if enable_remote_user_header:
         remote_user_header = au.get_system_conf().get('remote_user_header', "remote_user")
         if remote_user_header in request.headers:
@@ -485,7 +484,6 @@ def create_user_dir_if_not_exist (username):
 async def signup (request):
     global servermode
     global noguest
-    enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
     if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         username = queries['username']
@@ -521,7 +519,6 @@ async def login (request):
     global servermode
     fail_string = 'fail'
 
-    enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
     if servermode and not enable_remote_user_header:
         auth_header = request.headers.get('Authorization')
         if auth_header is None:
@@ -571,7 +568,7 @@ async def login (request):
 
 async def get_password_question (request):
     global servermode
-    if servermode:
+    if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         email = queries['email']
         question = await admindb.get_password_question(email)
@@ -585,7 +582,7 @@ async def get_password_question (request):
 
 async def check_password_answer (request):
     global servermode
-    if servermode:
+    if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         email = queries['email']
         answer = queries['answer']
@@ -610,7 +607,7 @@ async def set_temp_password (request):
 
 async def change_password (request):
     global servermode
-    if servermode:
+    if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         newemail = queries['newemail']
         oldpassword = queries['oldpassword']
@@ -780,10 +777,7 @@ async def get_assembly_stat (request):
 async def restart (request):
     global servermode
     if servermode:
-        username = await get_username(request)
-        if username != 'admin':
-            return web.json_response({'success': False, 'msg': 'Only admin can change the settings.'})
-        r = await is_loggedin(request)
+        r = await is_admin_loggedin(request)
         if r == False:
             return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
     os.execvp('wcravat', ['wcravat', '--multiuser', '--headless'])
@@ -823,6 +817,7 @@ async def get_noguest(request):
     return web.json_response(noguest)
 
 system_conf = au.get_system_conf()
+enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
 
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
