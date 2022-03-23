@@ -483,7 +483,6 @@ def create_user_dir_if_not_exist (username):
 
 async def signup (request):
     global servermode
-    global noguest
     if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         username = queries['username']
@@ -812,11 +811,10 @@ async def setup_module ():
     await admindb.init()
 
 async def get_noguest(request):
-    global noguest
-    noguest = system_conf.get('noguest', True)
     return web.json_response(noguest)
 
 system_conf = au.get_system_conf()
+noguest = system_conf.get('noguest', False)
 enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
 
 def add_routes (router):
