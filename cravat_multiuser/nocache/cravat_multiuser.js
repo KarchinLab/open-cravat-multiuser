@@ -280,6 +280,7 @@ function checkLogged (inUsername) {
             if (logged == true) {
                 username = response['email'];
                 noRemDays = response['days_rem'];
+                adminMode = response['admin']
                 doAfterLogin(username);
             } else {
                 showUnloggedControl();
@@ -298,8 +299,7 @@ function showUnloggedControl () {
 
 function doAfterLogin (username) {
     showLoggedControl(username);
-    if (username == 'admin') {
-        adminMode = true;
+    if (adminMode == true) {
         setupAdminMode();
     }
     populateJobs();

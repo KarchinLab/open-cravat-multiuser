@@ -678,7 +678,7 @@ async def check_logged (request):
                 days_rem = guest_lifetime - days_passed
             else:
                 days_rem = -1
-        response = {'logged': logged, 'email': email, 'days_rem': days_rem}
+        response = {'logged': logged, 'email': email, 'days_rem': days_rem, 'admin': await is_admin_loggedin(request)}
     else:
         response = 'no multiuser mode'
     return web.json_response(response)
