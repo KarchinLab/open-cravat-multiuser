@@ -444,6 +444,7 @@ async def try_remote_user_login (request):
             if remote_username:
                 session = await get_session(request)
                 session['username'] = remote_username
+                create_user_dir_if_not_exist(remote_username)
                 sessionkey = get_session_key()
                 session['sessionkey'] = sessionkey
                 await admindb.add_sessionkey(remote_username, sessionkey)
