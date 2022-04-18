@@ -431,17 +431,34 @@ async def new_session (request):
 async def is_loggedin (request):
     session = await get_session(request)
     if 'username' not in session or 'sessionkey' not in session:
-        response = False
+        response = await try_remote_user_login(request)
     else:
         response = await admindb.check_sessionkey(session['username'], session['sessionkey'])
     return response
+
+async def try_remote_user_login (request):
+    if enable_remote_user_header:
+        remote_user_header = au.get_system_conf().get('remote_user_header', "remote_user")
+        if remote_user_header in request.headers:
+            remote_username = request.headers.get(remote_user_header)
+            if remote_username:
+                session = await get_session(request)
+                session['username'] = remote_username
+                create_user_dir_if_not_exist(remote_username)
+                sessionkey = get_session_key()
+                session['sessionkey'] = sessionkey
+                await admindb.add_sessionkey(remote_username, sessionkey)
+                return True
+    return False
 
 async def is_admin_loggedin (request):
     r = await is_loggedin(request)
     if r == False:
         return False
     session = await get_session(request)
-    if 'username' in session and 'admin' in session['username']:
+    admin_list = system_conf.get('admin_list', ["admin"])
+
+    if 'username' in session and session['username'] in admin_list:
         return True
     else:
         return False
@@ -467,38 +484,42 @@ def create_user_dir_if_not_exist (username):
 
 async def signup (request):
     global servermode
-    if servermode:
+    if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         username = queries['username']
-        password = queries['password']
-        m = hashlib.sha256()
-        m.update(password.encode('utf-16be'))
-        passwordhash = m.hexdigest()
-        question = queries['question']
-        answer = queries['answer']
-        m = hashlib.sha256()
-        m.update(answer.encode('utf-16be'))
-        answerhash = m.hexdigest()
-        r = await admindb.check_username_presence(username)
-        if r == True:
-            response = 'already registered'
+        if noguest and username.startswith('guest_'):
+            response = 'No guest account is allowed.'
         else:
-            await admindb.add_user(username, passwordhash, question, answerhash)
-            session = await get_session(request)
-            create_user_dir_if_not_exist(username)
-            sessionkey = get_session_key()
-            session['username'] = username
-            session['sessionkey'] = sessionkey
-            await admindb.add_sessionkey(username, sessionkey)
-            response = 'success'
+            password = queries['password']
+            m = hashlib.sha256()
+            m.update(password.encode('utf-16be'))
+            passwordhash = m.hexdigest()
+            question = queries['question']
+            answer = queries['answer']
+            m = hashlib.sha256()
+            m.update(answer.encode('utf-16be'))
+            answerhash = m.hexdigest()
+            r = await admindb.check_username_presence(username)
+            if r == True:
+                response = 'Already registered'
+            else:
+                await admindb.add_user(username, passwordhash, question, answerhash)
+                session = await get_session(request)
+                create_user_dir_if_not_exist(username)
+                sessionkey = get_session_key()
+                session['username'] = username
+                session['sessionkey'] = sessionkey
+                await admindb.add_sessionkey(username, sessionkey)
+                response = 'Signup successful'
     else:
-        response = 'fail'
+        response = 'Signup failed'
     return web.json_response(response)
 
 async def login (request):
     global servermode
     fail_string = 'fail'
-    if servermode:
+
+    if servermode and not enable_remote_user_header:
         auth_header = request.headers.get('Authorization')
         if auth_header is None:
             return web.json_response(fail_string)
@@ -518,7 +539,6 @@ async def login (request):
                 int(datestr[6:8]))
             current_date = datetime.datetime.now()
             days_passed = (current_date - creation_date).days
-            global system_conf
             guest_lifetime = system_conf.get('guest_lifetime', 7)
             if days_passed > guest_lifetime:
                 await admindb.delete_user(username)
@@ -548,7 +568,7 @@ async def login (request):
 
 async def get_password_question (request):
     global servermode
-    if servermode:
+    if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         email = queries['email']
         question = await admindb.get_password_question(email)
@@ -562,7 +582,7 @@ async def get_password_question (request):
 
 async def check_password_answer (request):
     global servermode
-    if servermode:
+    if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         email = queries['email']
         answer = queries['answer']
@@ -587,7 +607,7 @@ async def set_temp_password (request):
 
 async def change_password (request):
     global servermode
-    if servermode:
+    if servermode and not enable_remote_user_header:
         queries = request.rel_url.query
         newemail = queries['newemail']
         oldpassword = queries['oldpassword']
@@ -655,12 +675,11 @@ async def check_logged (request):
                     int(datestr[6:8]))
                 current_date = datetime.datetime.now()
                 days_passed = (current_date - creation_date).days
-                global system_conf
                 guest_lifetime = system_conf.get('guest_lifetime', 7)
                 days_rem = guest_lifetime - days_passed
             else:
                 days_rem = -1
-        response = {'logged': logged, 'email': email, 'days_rem': days_rem}
+        response = {'logged': logged, 'email': email, 'days_rem': days_rem, 'admin': await is_admin_loggedin(request)}
     else:
         response = 'no multiuser mode'
     return web.json_response(response)
@@ -758,10 +777,7 @@ async def get_assembly_stat (request):
 async def restart (request):
     global servermode
     if servermode:
-        username = await get_username(request)
-        if username != 'admin':
-            return web.json_response({'success': False, 'msg': 'Only admin can change the settings.'})
-        r = await is_loggedin(request)
+        r = await is_admin_loggedin(request)
         if r == False:
             return web.json_response({'success': False, 'mgs': 'Only logged-in admin can change the settings.'})
     os.execvp('wcravat', ['wcravat', '--multiuser', '--headless'])
@@ -795,7 +811,12 @@ async def setup_module ():
     admindb = ServerAdminDb()
     await admindb.init()
 
+async def get_noguest(request):
+    return web.json_response(noguest)
+
 system_conf = au.get_system_conf()
+noguest = system_conf.get('noguest', False)
+enable_remote_user_header = system_conf.get('enable_remote_user_header', False)
 
 def add_routes (router):
     router.add_route('GET', '/server/login', login)
@@ -814,5 +835,6 @@ def add_routes (router):
     router.add_route('GET', '/server/restart', restart)
     router.add_route('GET', '/server/usersettings', get_user_settings)
     router.add_route('GET', '/server/nocache/login.html', show_login_page)
+    router.add_route('GET', '/server/noguest', get_noguest)
     router.add_static('/server', os.path.join(os.path.dirname(os.path.realpath(__file__))))
 

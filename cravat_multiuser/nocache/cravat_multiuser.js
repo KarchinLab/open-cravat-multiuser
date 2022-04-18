@@ -1,5 +1,6 @@
 adminMode = false;
 noRemDays = null;
+noguest = false
 
 function openSubmitPage () {
     location.href = location.protocol + '//' + window.location.host + '/submit/nocache/index.html';
@@ -215,51 +216,7 @@ function tryAsGuest () {
     var retypepassword = password;
     var question = 'Type 0 as answer';
     var answer = '0';
-    if (username == '' || password == '' || retypepassword == '' || question == '' || answer == '') {
-        msgAccountDiv('Fill all the blanks.');
-        return;
-    }
-    if (password != retypepassword) {
-        msgAccountDiv('Password mismatch');
-        return;
-    }
-    $.ajax({
-        url: '/server/signup',
-        data: {'username': username, 'password': password, 'question': question, 'answer': answer},
-        success: function (response) {
-            if (response == 'already registered') {
-                msgAccountDiv('Something went wrong. Please click the try as guest button again.');
-            } else if (response == 'success') {
-                document.getElementById('login_username').value = username;
-                document.getElementById('login_password').value = password;
-                /*
-                var div = getEl('div');
-                var sdiv = getEl('div');
-                sdiv.textContent = 'SUCCESS!';
-                addEl(div, sdiv);
-                addEl(div, getEl('br'));
-                var sdiv = getEl('div');
-                sdiv.textContent = 'Temporary account has been created for you to try OpenCRAVAT.';
-                addEl(div, sdiv);
-                addEl(div, getEl('br'));
-                var sdiv = getEl('div');
-                sdiv.textContent = 'Username is ' + username;
-                addEl(div, sdiv);
-                var sdiv = getEl('div');
-                sdiv.textContent = 'Password is ' + password;
-                addEl(div, sdiv);
-                addEl(div, getEl('br'));
-                var sdiv = getEl('div');
-                sdiv.textContent = 'Click OK to continue.';
-                addEl(div, sdiv);
-                msgAccountDiv(div, login);
-                */
-                login();
-            } else if (response == 'fail') {
-                msgAccountDiv('Signup failed');
-            }
-        }
-    });
+    processSignup(username, password, retypepassword, question, answer)
 }
 
 function signupSubmit () {
@@ -268,27 +225,48 @@ function signupSubmit () {
     var retypepassword = document.getElementById('signupretypepassword').value.trim();
     var question = document.getElementById('signupquestion').value.trim();
     var answer = document.getElementById('signupanswer').value.trim();
-    if (username == '' || password == '' || retypepassword == '' || question == '' || answer == '') {
-        msgAccountDiv('Fill all the blanks.');
-        return;
+    processSignup(username, password, retypepassword, question, answer)
+}
+
+function processSignup(username, password, retypepassword, question, answer) {
+    if (!username.match(/^\S+@\S+\.\S+$/) && username != "admin" && !username.includes("guest_")) {
+        msgAccountDiv('Invalid email.')
+        return
+    }
+    if (password == '') {
+        msgAccountDiv('Password is empty.')
+        return
+    }
+    if (retypepassword == '') {
+        msgAccountDiv('Re-typed password is empty.')
+        return
+    }
+    if (question == '') {
+        msgAccountDiv('Question is empty.')
+        return
+    }
+    if (answer == '') {
+        msgAccountDiv('Answer is empty.')
+        return
     }
     if (password != retypepassword) {
-        msgAccountDiv('Password mismatch');
+        msgAccountDiv('Password mismatch')
         return;
     }
     $.ajax({
         url: '/server/signup',
         data: {'username': username, 'password': password, 'question': question, 'answer': answer},
         success: function (response) {
-            if (response == 'already registered') {
-                msgAccountDiv('Already registered');
-            } else if (response == 'success') {
+            if (response == 'Signup successful') {
                 document.getElementById('login_username').value = username;
                 document.getElementById('login_password').value = password;
-                msgAccountDiv('Signup successful', login);
-            } else if (response == 'fail') {
-                msgAccountDiv('Signup failed');
+                msgAccountDiv(response, login)
+            } else {
+                msgAccountDiv(response, null)
             }
+        },
+        error: function(response) {
+            msgAccountDiv(response, null)
         }
     });
 }
@@ -302,6 +280,7 @@ function checkLogged (inUsername) {
             if (logged == true) {
                 username = response['email'];
                 noRemDays = response['days_rem'];
+                adminMode = response['admin']
                 doAfterLogin(username);
             } else {
                 showUnloggedControl();
@@ -320,8 +299,7 @@ function showUnloggedControl () {
 
 function doAfterLogin (username) {
     showLoggedControl(username);
-    if (username == 'admin') {
-        adminMode = true;
+    if (adminMode == true) {
         setupAdminMode();
     }
     populateJobs();
@@ -978,5 +956,20 @@ function multiuser_run () {
             login();
         }
     });
+}
+
+window.onload = function(evt) {
+    fetch('/server/noguest').then(function(response) {
+        if (response.status != 200) {
+            return false
+        } else {
+            return response.json()
+        }
+    }).then(function(response) {
+        noguest = response
+        if (!noguest) {
+            document.querySelector('#guestdiv').classList.add('show')
+        }
+    })
 }
 

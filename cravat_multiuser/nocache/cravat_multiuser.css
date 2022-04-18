@@ -201,3 +201,12 @@ body {
   align-items: center;
   gap: 0.25rem;
 }
+
+#guestdiv {
+    display: none;
+}
+
+#guestdiv.show {
+    display: block
+}
+
