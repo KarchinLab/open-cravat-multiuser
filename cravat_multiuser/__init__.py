@@ -38,18 +38,10 @@ class ServerAdminDb ():
             cursor.execute('create table config (key text, value text)')
             fernet_key = fernet.Fernet.generate_key()
             cursor.execute('insert into config (key, value) values ("fernet_key",?)',[fernet_key])
-            cursor.execute('create table sessions (username text, sessionkey text, last_active text default current_timestamp, primary key (username, sessionkey))')
             conn.commit()
         else:
             cursor.execute('select value from config where key="fernet_key"')
             fernet_key = cursor.fetchone()[0]
-            cursor.execute('select username, sessionkey from sessions')
-            rows = cursor.fetchall()
-            for row in rows:
-                (username, sessionkey) = row
-                if username not in self.sessions:
-                    self.sessions[username] = set()
-                self.sessions[username].add(sessionkey)
         self.secret_key = base64.urlsafe_b64decode(fernet_key)
         cursor.close()
         conn.close()
@@ -64,59 +56,24 @@ class ServerAdminDb ():
         await self.create_apilog_table_if_necessary()
 
     async def check_sessionkey (self, username, sessionkey):
-        if username not in self.sessions or sessionkey not in self.sessions[username]:
+        if username is None or username == "" or sessionkey is None or sessionkey == "":
             return False
         else:
-            conn = await self.get_db_conn()
-            cursor = await conn.cursor()
-            await cursor.execute('select username from sessions where sessionkey = ?',[sessionkey])
-            r = await cursor.fetchone()
-            await cursor.close()
-            await conn.close()
-            if r and r[0] == username:
-                if sessionkey not in self.sessions[username]:
-                    self.sessions[username].add(sessionkey)
-                return True
-            else:
-                return False
+            #Accept any user/session provided in a cookie - counting on encryption
+            if username not in self.sessions:
+                self.sessions[username] = set()
+            if sessionkey not in self.sessions[username]:
+                self.sessions[username].add(sessionkey)
+            return True
 
     async def add_sessionkey (self, username, sessionkey):
-        conn = await self.get_db_conn()
-        cursor = await conn.cursor()
         self.sessions[username].add(sessionkey)
-        await cursor.execute('insert into sessions (username, sessionkey) values (?, ?)',[username, sessionkey])
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
     
     async def remove_sessionkey(self, username, sessionkey):
         self.sessions[username].discard(sessionkey)
-        conn = await self.get_db_conn()
-        cursor = await conn.cursor()
-        await cursor.execute('delete from sessions where username=? and sessionkey=?',[username, sessionkey])
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
-
-    async def update_last_active(self, username, sessionkey):
-        conn = await self.get_db_conn()
-        cursor = await conn.cursor()
-        await cursor.execute('update sessions set last_active = current_timestamp where username=? and sessionkey=?',[username, sessionkey])
-        await conn.commit()
-        await cursor.close()
-        await conn.close()
 
     async def clean_sessions(self, max_age):
-        """
-        Delete sessions older than a number of seconds.
-        """
-        conn = await self.get_db_conn()
-        if conn is not None:
-            cursor = await conn.cursor()
-            await cursor.execute(f'delete from sessions where last_active <= datetime(current_timestamp,"-{max_age} seconds")')
-            await conn.commit()
-            await cursor.close()
-        await conn.close()
+        return
 
     async def check_password (self, username, passwordhash):
         conn = await self.get_db_conn()
@@ -375,8 +332,6 @@ class ServerAdminDb ():
         cursor = await conn.cursor()
         q = f'delete from users where email="{username}"'
         await cursor.execute(q)
-        q = f'delete from sessions where username="{username}"'
-        await cursor.execute(q)
         await conn.commit()
         await cursor.close()
         await conn.close()
@@ -405,11 +360,8 @@ class ServerAdminDb ():
         await conn.close()
 
 async def update_last_active(request):
-    session = await get_session(request)
-    username = session.get('username')
-    sessionkey = session.get('sessionkey')
-    if username and sessionkey:
-        await admindb.update_last_active(username, sessionkey)
+    return
+
 
 def get_session_key ():
     fernet_key = fernet.Fernet.generate_key()
@@ -788,14 +740,14 @@ async def show_login_page (request):
     if not servermode or not server_ready:
         global logger
         logger.info('Login page requested but no multiuser mode. Redirecting to submit index...')
-        return web.HTTPFound('/submit/index.html')
+        return web.HTTPFound('/submit/nocache/index.html')
     r = await is_loggedin(request)
     if r == False:
         p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nocache', 'login.html')
         return web.FileResponse(p)
     else:
         logger.info('Login page requested but already logged in. Redirecting to submit index...')
-        return web.HTTPFound('/submit/index.html')
+        return web.HTTPFound('/submit/nocache/index.html')
 
 async def get_user_settings (request):
     session = await get_session(request)
