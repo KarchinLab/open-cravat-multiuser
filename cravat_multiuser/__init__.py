@@ -25,7 +25,6 @@ class ServerAdminDb ():
         initdb = not os.path.exists(admindb_path)
         conn = sqlite3.connect(admindb_path)
         cursor = conn.cursor()
-        self.sessions = defaultdict(set)
         if initdb:    
             cursor.execute('create table users (email text, passwordhash text, question text, answerhash text, settings text)')
             m = hashlib.sha256()
@@ -55,23 +54,7 @@ class ServerAdminDb ():
     async def init (self):
         await self.create_apilog_table_if_necessary()
 
-    async def check_sessionkey (self, username, sessionkey):
-        if username is None or username == "" or sessionkey is None or sessionkey == "":
-            return False
-        else:
-            #Accept any user/session provided in a cookie - counting on encryption
-            if username not in self.sessions:
-                self.sessions[username] = set()
-            if sessionkey not in self.sessions[username]:
-                self.sessions[username].add(sessionkey)
-            return True
-
-    async def add_sessionkey (self, username, sessionkey):
-        self.sessions[username].add(sessionkey)
-    
-    async def remove_sessionkey(self, username, sessionkey):
-        self.sessions[username].discard(sessionkey)
-
+    #No longer track sessions in DB but leaving it for now as it is called externally.
     async def clean_sessions(self, max_age):
         return
 
@@ -359,14 +342,10 @@ class ServerAdminDb ():
         await cursor.close()
         await conn.close()
 
+
+# No longer store these. Do nothing.
 async def update_last_active(request):
     return
-
-
-def get_session_key ():
-    fernet_key = fernet.Fernet.generate_key()
-    session_key = str(fernet_key)
-    return session_key
 
 def setup (app):
     cookie = EncryptedCookieStorage(admindb.secret_key)
@@ -382,10 +361,14 @@ async def new_session (request):
 
 async def is_loggedin (request):
     session = await get_session(request)
-    if 'username' not in session or 'sessionkey' not in session:
+    if 'username' not in session:
         response = await try_remote_user_login(request)
     else:
-        response = await admindb.check_sessionkey(session['username'], session['sessionkey'])
+        #Trust encrypted cookie. If we have a username - assume they are logged in.
+        if session['username'] is not None and  session['username'] != '':
+            response = True
+        else:
+            response = False
     return response
 
 async def try_remote_user_login (request):
@@ -397,9 +380,6 @@ async def try_remote_user_login (request):
                 session = await get_session(request)
                 session['username'] = remote_username
                 create_user_dir_if_not_exist(remote_username)
-                sessionkey = get_session_key()
-                session['sessionkey'] = sessionkey
-                await admindb.add_sessionkey(remote_username, sessionkey)
                 return True
     return False
 
@@ -458,10 +438,7 @@ async def signup (request):
                 await admindb.add_user(username, passwordhash, question, answerhash)
                 session = await get_session(request)
                 create_user_dir_if_not_exist(username)
-                sessionkey = get_session_key()
                 session['username'] = username
-                session['sessionkey'] = sessionkey
-                await admindb.add_sessionkey(username, sessionkey)
                 response = 'Signup successful'
     else:
         response = 'Signup failed'
@@ -506,9 +483,6 @@ async def login (request):
         if r == True:
             session = await get_session(request)
             session['username'] = username
-            sessionkey = get_session_key()
-            session['sessionkey'] = sessionkey
-            await admindb.add_sessionkey(username, sessionkey)
             if guest_login:
                 return web.json_response('guestsuccess_' + str(days_rem))
             else:
@@ -640,7 +614,6 @@ async def logout (request):
     global servermode
     if servermode:
         session = await get_session(request)
-        await admindb.remove_sessionkey(session['username'], session['sessionkey'])
         ns = await new_session(request)
         ns['username'] = None
         response = 'success'
