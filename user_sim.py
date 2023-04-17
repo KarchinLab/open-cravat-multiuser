@@ -23,7 +23,8 @@ else:
 # instance of Options class allows
 # us to configure Headless Chrome
 options = Options()
-  
+options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
 # this parameter tells Chrome that
 # it should be run without UI (Headless)
 #options.headless = True
@@ -82,11 +83,37 @@ for i in range(1, iteration + 1):
     wait.until(EC.invisibility_of_element(spin));
     time.sleep(0.5)
     
+    #Open results viewer
+    start = time.time()
+    res_btn = driver.find_element(By.CLASS_NAME, 'butn.launch-button')
+    res_btn.click()
+    
+    #wait for results tab to open
+    while (len(driver.window_handles) < 2):
+        time.sleep(0.1)
+        
+    jobs_list = driver.window_handles[0]
+    results = driver.window_handles[1]
+    driver.switch_to.window(results)
+        
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME,'store-noconnect-msg-div')))
+    res_spin = driver.find_element(By.CLASS_NAME, 'store-noconnect-msg-div')
+    wait.until(EC.invisibility_of_element(res_spin));
+    print("")
+    print("Result page time: " + str(time.time() - start) + " secs")
+    print("")
+    time.sleep( 15 )
+    
+    driver.close()
+    driver.switch_to.window(jobs_list)
+    
+    
     if user != 'guest'  or i == iteration:
         #wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@title="Logout"]')))
         bt = driver.find_element(By.XPATH, '//*[@title="Logout"]')
         bt.click()
         wait.until(EC.presence_of_element_located((By.ID,'logindiv')))
+        time.sleep(0.5)
 
 
 # close browser after our manipulations

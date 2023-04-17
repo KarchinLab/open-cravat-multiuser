@@ -38,6 +38,7 @@ class ServerAdminDb ():
             fernet_key = fernet.Fernet.generate_key()
             cursor.execute('insert into config (key, value) values ("fernet_key",?)',[fernet_key])
             conn.commit()
+            cursor.execute("pragma journal_mode=WAL;")
         else:
             cursor.execute('select value from config where key="fernet_key"')
             fernet_key = cursor.fetchone()[0]
