@@ -577,10 +577,7 @@ async def change_password (request):
 async def check_logged (request):
     global servermode
     if servermode:
-        if 'Cache-Control' in request.headers:
-            session = await new_session(request)
-        else:
-            session = await get_session(request)
+        session = await get_session(request)
         if not 'username' in session:
             logged = False
             email = ''
