@@ -979,12 +979,6 @@ window.onload = function(evt) {
     })
 }
 
-
-function test() {
-	console.log('test');
-}
-
 export {
-	test,
 	checkLogged,
 }
