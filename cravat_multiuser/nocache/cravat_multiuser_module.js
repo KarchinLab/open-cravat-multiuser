@@ -984,6 +984,7 @@ function multiuser_run () {
     document.querySelector('#forgotpasswordsubmitbutton').addEventListener('click',()=>{submitForgotPasswordAnswer()});
     document.querySelector('#signupbutton').addEventListener('click',()=>{signupSubmit()});
     document.querySelector('#show-login-div-btn').addEventListener('click',()=>{showLoginDiv()});
+    document.querySelector('#guest_button').addEventListener('click',()=>{tryAsGuest()});
 }
 
 window.onload = function(evt) {
