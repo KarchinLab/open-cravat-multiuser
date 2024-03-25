@@ -4,6 +4,10 @@ import {
 	getTn, addEl, getEl, PubSub, OC
 } from '/submit/nocache/core.js'
 
+import {
+    showYesNoDialog
+} from '/submit/nocache/header.js'
+
 OC.adminMode = false;
 OC.noRemDays = null;
 OC.noguest = false
@@ -42,7 +46,7 @@ function login () {
                 */
                 openSubmitPage();
             } else if (response == 'success') {
-                username = response['email'];
+                var username = response['email'];
                 openSubmitPage();
             } else if (response == 'fail') {
                 msgAccountDiv('Login failed');
@@ -958,6 +962,7 @@ function exportContentAdminPanel (tabName) {
 }
 
 function multiuser_run () {
+    console.log('multiuser_run');
     var submitBtn = document.querySelector('#login_button');
     var el = document.querySelector('#login_username');
     el.addEventListener('keyup', function (evt) {
@@ -971,6 +976,14 @@ function multiuser_run () {
             login();
         }
     });
+    document.querySelector('#login_button').addEventListener('click',()=>{login()});
+    document.querySelector('#forgot-pw-span').addEventListener('click',()=>{forgotPassword()});
+    document.querySelector('#signup-btn').addEventListener('click',()=>{showSignupDiv()});
+    document.querySelector('#forgotpasswordgetquestionbutton').addEventListener('click',()=>{getPasswordQuestion()});
+    document.querySelector('#show-login-span').addEventListener('click',()=>{showLoginDiv()});
+    document.querySelector('#forgotpasswordsubmitbutton').addEventListener('click',()=>{submitForgotPasswordAnswer()});
+    document.querySelector('#signupbutton').addEventListener('click',()=>{signupSubmit()});
+    document.querySelector('#show-login-div-btn').addEventListener('click',()=>{showLoginDiv()});
 }
 
 window.onload = function(evt) {
@@ -981,11 +994,12 @@ window.onload = function(evt) {
             return response.json()
         }
     }).then(function(response) {
-        noguest = response
-        if (!noguest) {
+        OC.noguest = response
+        if (!OC.noguest) {
             document.querySelector('#guestdiv').classList.add('show')
         }
     })
+    $(document).ready(() => multiuser_run());
 }
 
 export {
