@@ -313,7 +313,7 @@ function doAfterLogin (username) {
 
 function setupAdminMode () {
     document.getElementById('settingsdiv').style.display = 'none';
-    document.querySelector('.threedotsdiv').style.display = 'block';
+    document.querySelector('.threedotsdiv').style.display = '';
     $('#storediv_tabhead[value=storediv]')[0].style.display = 'inline-block';
     $('#admindiv_tabhead[value=admindiv]')[0].style.display = 'inline-block';
     document.getElementById('admindiv_tabhead').setAttribute('disabled', 'f');
@@ -783,23 +783,31 @@ function addAccountDiv (username) {
     var logoutDiv = getEl('div');
     logoutDiv.id = 'logdiv';
     addEl(div, logoutDiv);
+    let chngpwdContainer = getEl('div');
+    chngpwdContainer.classList.add('menu-icon-container');
     var btn = getEl('img');
     btn.src = '/server/pwchng.png';
     btn.addEventListener('click', function (evt) {
         changePassword();
     });
     btn.title = 'Change password';
-    addEl(logoutDiv, btn);
+    btn.classList.add('menu-icon');
+    addEl(chngpwdContainer, btn);
+    addEl(logoutDiv, chngpwdContainer);
     var span = getEl('span');
     span.textContent = '\xa0\xa0';
     addEl(logoutDiv, span);
+    let logoutContainer = getEl('div');
+    logoutContainer.classList.add('menu-icon-container');
     var btn = getEl('img');
     btn.src = '/server/logout.png';
     btn.addEventListener('click', function (evt) {
         logout();
     });
     btn.title = 'Logout';
-    addEl(logoutDiv, btn);
+    btn.classList.add('menu-icon');
+    addEl(logoutContainer, btn);
+    addEl(logoutDiv, logoutContainer);
     var sdiv = getEl('div');
     sdiv.id = 'changepassworddiv';
     var span = getEl('span');
@@ -842,8 +850,9 @@ function addAccountDiv (username) {
     btn.textContent = 'Submit';
     addEl(sdiv, btn);
     addEl(div, sdiv);
-    var headerDiv = document.querySelector('.headerdiv');
-    addEl(headerDiv, div);
+    var headerDiv = document.getElementById('top-menu');
+    headerDiv.insertBefore(div, headerDiv.firstChild);
+    // addEl(headerDiv, div);
     if (isGuestAccount(username)) {
         document.querySelector('#changepassworddiv input:nth-child(2)').style.display = 'none';
         document.querySelector('#changepassworddiv span:first-child').style.display = 'none';
