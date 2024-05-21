@@ -800,7 +800,7 @@ function addAccountDiv (username) {
     let logoutContainer = getEl('div');
     logoutContainer.classList.add('menu-icon-container');
     var btn = getEl('img');
-    btn.src = '/server/logout.png';
+    btn.src = '/server/sign-out.svg';
     btn.addEventListener('click', function (evt) {
         logout();
     });
