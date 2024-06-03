@@ -8,14 +8,14 @@ def readme ():
     except IOError:
         return ''
 
-data_files = ['favicon.ico', 'favicon.png', 'logout.png', 'pwchng.png']
+data_files = ['favicon.ico', 'favicon.png', 'logout.png', 'pwchng.png', 'sign-out.svg']
 for root, dirs, files in os.walk(os.path.join('cravat_multiuser', 'nocache')):
     root_files = [os.path.join('..', root, f) for f in files]
     data_files.extend(root_files)
 
 setup(
     name='open-cravat-multiuser',
-    version='2.7.0',
+    version='2.7.1',
     description='OpenCRAVAT Multiuser Addon',
     long_description=readme(),
     author='Rick Kim, Kyle Moad, Mike Ryan, and Rachel Karchin',
