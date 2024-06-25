@@ -141,11 +141,12 @@ body * {
     display: none;
     position: absolute;
     top: 2rem;
-    left: 0;
+    right: 1rem;
     background-color: white;
     padding: 1rem;
     box-shadow: 0.5rem 0.5rem 0.5rem gray;
     border: 1px solid gray;
+    z-index: 203;
 }
 
 .disabled {

@@ -862,14 +862,17 @@ function addAccountDiv (username) {
         document.querySelector('#changepassworddiv span:first-child').style.display = 'none';
         var sdiv = getEl('div');
         sdiv.id = 'guest_warn_div';
-        var span = getEl('span');
-        span.textContent = 'This guest account will be deleted after ' + noRemDays + (noRemDays > 1? ' days': ' day') + '. To keep your jobs, click the change account information icon to the right of user name and enter your email address and a new password.';
-        addEl(sdiv, span);
+        var p1 = getEl('p');
+        p1.textContent = `This guest account will be deleted in ${OC.noRemDays} ${(OC.noRemDays > 1) ? 'days' : 'day'}.`;
+        addEl(sdiv, p1);
+        var p2 = getEl('p');
+        p2.textContent = 'To keep your jobs, click the change password icon to the right of user name.';
+        addEl(sdiv, p2);
         addEl(div, sdiv);
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.style.marginRight = '0.2rem';
         svg.addEventListener('mouseover', function (evt) {
-            document.querySelector('#guest_warn_div').style.display = 'flex';
+            document.querySelector('#guest_warn_div').style.display = 'block';
         });
         svg.addEventListener('mouseout', function (evt) {
             document.querySelector('#guest_warn_div').style.display = 'none';
