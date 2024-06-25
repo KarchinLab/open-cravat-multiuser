@@ -317,6 +317,7 @@ function doAfterLogin (username) {
 
 function setupAdminMode () {
     document.getElementById('settingsdiv').style.display = 'none';
+    document.getElementById('submitdiv').style.gridTemplateColumns = '1fr'; // only one column now
     document.querySelector('.threedotsdiv').style.display = '';
     $('#storediv_tabhead[value=storediv]')[0].style.display = 'inline-block';
     $('#admindiv_tabhead[value=admindiv]')[0].style.display = 'inline-block';
