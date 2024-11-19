@@ -183,6 +183,10 @@ body * {
   text-decoration: none;
 }
 
+#sidenav a:hover {
+    text-decoration: underline;
+}
+
 #container {
   display: flex;
   flex-direction: row;
